@@ -51,18 +51,31 @@ export class AppConfigService {
 
   /**
    * Returns the list of allowed CORS origins.
-   * CORS_ORIGIN can be a comma-separated list (e.g. "https://app.example.com,https://www.example.com").
-   * Falls back to FRONTEND_URL for single-origin setups.
+   * Parses both CORS_ORIGIN and FRONTEND_URL environment variables.
+   * Handles comma-separated lists, trims whitespace, strips trailing slashes, and deduplicates.
    */
   get corsOrigins(): string[] {
-    const corsOrigin = this.configService.get<string>('CORS_ORIGIN');
-    if (corsOrigin) {
-      return corsOrigin
+    const rawOrigins = [
+      this.configService.get<string>('CORS_ORIGIN'),
+      this.configService.get<string>('FRONTEND_URL'),
+    ];
+
+    const origins: string[] = [];
+
+    for (const raw of rawOrigins) {
+      if (!raw) continue;
+      const parts = raw
         .split(',')
-        .map((o) => o.trim())
+        .map((o) => o.trim().replace(/\/+$/, ''))
         .filter(Boolean);
+      origins.push(...parts);
     }
-    return [this.frontendUrl];
+
+    if (this.isDevelopment && !origins.includes('http://localhost:5173')) {
+      origins.push('http://localhost:5173');
+    }
+
+    return Array.from(new Set(origins));
   }
 
   get googleClientId(): string | undefined {

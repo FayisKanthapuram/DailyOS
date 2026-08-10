@@ -21,25 +21,29 @@ async function bootstrap(): Promise<void> {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // CORS — support comma-separated CORS_ORIGIN list or fall back to FRONTEND_URL
+  // CORS — support comma-separated CORS_ORIGIN and FRONTEND_URL
   const allowedOrigins = configService.corsOrigins;
   app.enableCors({
     origin: (
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      // Allow requests with no origin (mobile apps, curl, Postman in dev)
+      // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
       if (!origin) {
         callback(null, true);
         return;
       }
-      if (allowedOrigins.includes(origin)) {
+      const normalizedOrigin = origin.replace(/\/+$/, '');
+      if (allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+        // Return null, false so preflight OPTIONS requests fail cleanly without throwing a 500 server error
+        callback(null, false);
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
   });
 
   // Global pipes
