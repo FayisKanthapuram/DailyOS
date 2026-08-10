@@ -168,22 +168,28 @@ function buildMetaBlock(page) {
 function injectMeta(template, page) {
   const metaBlock = buildMetaBlock(page);
 
-  // Remove existing <title> and all <meta> / <link rel="canonical"> / JSON-LD from <head>
-  // Strategy: replace everything between <head> and </head> that we control,
-  // while preserving Vite-injected <script> and <link rel="stylesheet"> etc.
-  // We do this by replacing the content between the opening <head> tag and the first Vite asset tag.
+  // Extract Vite-injected JS module scripts and CSS links from the compiled template
+  const jsModuleScripts =
+    template.match(/<script\b[^>]*type="module"[^>]*src="\/assets\/[^"]+"[^>]*><\/script>/gi) || [];
+  const styleLinkTags =
+    template.match(/<link\b[^>]*rel="stylesheet"[^>]*href="\/assets\/[^"]+"[^>]*>/gi) || [];
 
-  // Replace <head> opening tag content up to the first Vite CSS link or closing </head>
-  // Simple approach: replace the pattern of known static meta from index.html template
-  let result = template;
-
-  // Replace everything between <head> (exclusive) and the first <link href="https://fonts... (or </head>)
-  // We know the template structure: everything before the Vite injected assets is our meta block
-  // Use a regex that captures from <head> to the first </head> occurrence
-  result = result.replace(
+  // Replace <head>...</head> content with metadata and preserved CSS link tags
+  let result = template.replace(
     /<head>([\s\S]*?)<\/head>/,
-    (_, _inner) => `<head>\n    ${metaBlock}\n  </head>`,
+    (_, _inner) =>
+      `<head>\n    ${metaBlock}\n    ${styleLinkTags.join('\n    ')}\n  </head>`,
   );
+
+  // Preserve Vite JS bundle script tags inside <body> before </body>
+  if (jsModuleScripts.length > 0) {
+    const scriptsBlock = jsModuleScripts.join('\n    ');
+    if (result.includes('</body>')) {
+      result = result.replace('</body>', `  ${scriptsBlock}\n  </body>`);
+    } else {
+      result += `\n${scriptsBlock}`;
+    }
+  }
 
   return result;
 }
