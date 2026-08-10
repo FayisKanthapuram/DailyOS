@@ -9,6 +9,7 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
 import { TagsModule } from './modules/tags/tags.module.js';
 import { TasksModule } from './modules/tasks/tasks.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
+import { CalendarModule } from './modules/calendar/calendar.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -22,6 +23,7 @@ import { AppService } from './app.service.js';
     TagsModule,
     TasksModule,
     StatsModule,
+    CalendarModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

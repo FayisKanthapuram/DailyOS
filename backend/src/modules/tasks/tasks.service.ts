@@ -10,6 +10,7 @@ import { ReorderSubtasksDto } from './dto/reorder-subtasks.dto.js';
 import { TaskFiltersDto } from './dto/task-filters.dto.js';
 import { getTodayInTimezone } from '../../common/utils/timezone.js';
 import { Prisma, TaskStatus } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 @Injectable()
 export class TasksService {
@@ -26,7 +27,9 @@ export class TasksService {
 
   async findAll(userId: string, filters: TaskFiltersDto) {
     const limit = Math.min(filters.limit ?? 50, 200);
-    const today = getTodayInTimezone(await this.getUserTimezone(userId));
+    const userTimezone = await this.getUserTimezone(userId);
+    const today = getTodayInTimezone(userTimezone);
+    const currentTime = DateTime.now().setZone(userTimezone).toFormat('HH:mm');
 
     const where: Prisma.TaskWhereInput = {
       userId,
@@ -41,8 +44,8 @@ export class TasksService {
         ],
       }),
       ...(filters.overdue && {
-        dueDate: { lt: today },
         status: { notIn: [TaskStatus.COMPLETED, TaskStatus.ARCHIVED] },
+        OR: [{ dueDate: { lt: today } }, { dueDate: today, dueTime: { lt: currentTime } }],
       }),
     };
 
