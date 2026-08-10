@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Tasks', href: '/tasks', icon: CheckSquare, disabled: true },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Calendar', href: '/calendar', icon: Calendar, disabled: true },
   { name: 'Statistics', href: '/statistics', icon: BarChart3, disabled: true },
   { name: 'Pomodoro', href: '/pomodoro', icon: Timer, disabled: true },

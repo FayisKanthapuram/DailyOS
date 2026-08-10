@@ -11,7 +11,6 @@ import { UsersService } from '../users/users.service.js';
 import { AppConfigService } from '../../config/config.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { AuthResponseDto } from './dto/auth-response.dto.js';
 import { UserResponseDto } from './dto/user-response.dto.js';
 
 export interface Tokens {
@@ -38,6 +37,7 @@ export class AuthService {
       email: dto.email,
       name: dto.name,
       password: hashedPassword,
+      timezone: dto.timezone ?? 'UTC',
     });
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -84,12 +84,10 @@ export class AuthService {
 
     const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
     if (!isRefreshTokenValid) {
-      // Possible token reuse attack! Revoke sessions immediately for safety.
       await this.usersService.updateRefreshTokenHash(user.id, null);
       throw new UnauthorizedException('Access denied. Invalid or reused refresh token.');
     }
 
-    // Refresh Token Rotation: issue brand new pair and update DB hash
     const tokens = await this.generateTokens(user.id, user.email);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
 
@@ -144,10 +142,12 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.jwtSecret,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expiresIn: this.configService.jwtAccessExpiration as any,
       }),
       this.jwtService.signAsync(payload, {
         secret: this.configService.jwtRefreshSecret,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expiresIn: this.configService.jwtRefreshExpiration as any,
       }),
     ]);

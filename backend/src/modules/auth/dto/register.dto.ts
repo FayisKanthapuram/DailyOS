@@ -1,29 +1,26 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIANATimezone } from '../../../common/validators/is-iana-timezone.validator.js';
 
 export class RegisterDto {
-  @ApiProperty({
-    example: 'Alex Morgan',
-    description: 'Full name of the user',
-  })
+  @ApiProperty({ example: 'John Doe' })
   @IsString()
-  @IsNotEmpty({ message: 'Name is required' })
+  @MaxLength(100)
   name!: string;
 
-  @ApiProperty({
-    example: 'alex@example.com',
-    description: 'Unique email address',
-  })
-  @IsEmail({}, { message: 'Invalid email address' })
-  @IsNotEmpty({ message: 'Email is required' })
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
   email!: string;
 
-  @ApiProperty({
-    example: 'P@ssword123',
-    description: 'Account password (minimum 8 characters)',
-    minLength: 8,
-  })
+  @ApiProperty({ example: 'Password123!' })
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MinLength(8)
+  @MaxLength(128)
   password!: string;
+
+  @ApiPropertyOptional({ example: 'Asia/Kolkata' })
+  @IsOptional()
+  @IsString()
+  @IsIANATimezone()
+  timezone?: string;
 }

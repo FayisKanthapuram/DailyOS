@@ -6,7 +6,12 @@ let pendingRefreshPromise: Promise<AuthResponse> | null = null;
 
 export const authApi = {
   async register(payload: RegisterPayload): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>('/auth/register', payload);
+    const userTimezone =
+      payload.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const { data } = await api.post<AuthResponse>('/auth/register', {
+      ...payload,
+      timezone: userTimezone,
+    });
     tokenStore.setAccessToken(data.accessToken);
     return data;
   },

@@ -25,6 +25,9 @@ const DashboardPage = lazy(() =>
     default: m.DashboardPage,
   })),
 );
+const TasksPage = lazy(() =>
+  import('@/features/tasks/pages/tasks-page').then((m) => ({ default: m.TasksPage })),
+);
 const NotFoundPage = lazy(() =>
   import('@/features/not-found/pages/not-found-page').then((m) => ({
     default: m.NotFoundPage,
@@ -102,6 +105,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <DashboardPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: '/tasks',
+        element: (
+          <SuspenseWrapper>
+            <TasksPage />
           </SuspenseWrapper>
         ),
       },

@@ -28,10 +28,11 @@ export function LoginPage() {
       setApiError(null);
       await login(data);
       navigate('/dashboard', { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        err.response?.data?.message ||
-        err.message ||
+        errorObj.response?.data?.message ||
+        errorObj.message ||
         'Failed to sign in. Please check your credentials.';
       setApiError(typeof message === 'string' ? message : 'Invalid credentials');
     }

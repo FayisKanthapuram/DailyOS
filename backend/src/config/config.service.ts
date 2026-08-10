@@ -10,7 +10,7 @@ export class AppConfigService {
   }
 
   get nodeEnv(): string {
-    return this.configService.get<string>('NODE_ENV', 'development')!;
+    return this.configService.get<string>('NODE_ENV', 'development');
   }
 
   get isDevelopment(): boolean {
@@ -33,19 +33,19 @@ export class AppConfigService {
     return this.configService.get<string>(
       'JWT_REFRESH_SECRET',
       'supersecret_jwt_refresh_key_change_in_prod',
-    )!;
+    );
   }
 
   get jwtAccessExpiration(): string {
-    return this.configService.get<string>('JWT_ACCESS_EXPIRATION', '15m')!;
+    return this.configService.get<string>('JWT_ACCESS_EXPIRATION', '15m');
   }
 
   get jwtRefreshExpiration(): string {
-    return this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d')!;
+    return this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d');
   }
 
   get frontendUrl(): string {
-    return this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173')!;
+    return this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
   }
 
   get googleClientId(): string | undefined {
@@ -60,6 +60,6 @@ export class AppConfigService {
     return this.configService.get<string>(
       'GOOGLE_CALLBACK_URL',
       'http://localhost:3001/api/auth/google/callback',
-    )!;
+    );
   }
 }

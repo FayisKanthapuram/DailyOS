@@ -8,6 +8,7 @@ export interface CreateUserData {
   password?: string;
   avatar?: string;
   provider?: AuthProvider;
+  timezone?: string;
 }
 
 @Injectable()
@@ -34,6 +35,17 @@ export class UsersService {
         password: data.password,
         avatar: data.avatar,
         provider: data.provider ?? AuthProvider.LOCAL,
+        timezone: data.timezone ?? 'UTC',
+      },
+    });
+  }
+
+  async updateProfile(userId: string, data: { name?: string; timezone?: string }): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.timezone !== undefined && { timezone: data.timezone }),
       },
     });
   }

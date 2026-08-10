@@ -5,6 +5,10 @@ import { AppConfigModule } from './config/config.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
+import { TagsModule } from './modules/tags/tags.module.js';
+import { TasksModule } from './modules/tasks/tasks.module.js';
+import { StatsModule } from './modules/stats/stats.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -14,10 +18,14 @@ import { AppService } from './app.service.js';
     PrismaModule,
     UsersModule,
     AuthModule,
+    CategoriesModule,
+    TagsModule,
+    TasksModule,
+    StatsModule,
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 1 minute window
-        limit: 100, // 100 requests per minute per IP
+        ttl: 60000,
+        limit: 100,
       },
     ]),
   ],

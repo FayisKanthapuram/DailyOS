@@ -1,4 +1,4 @@
-import axios, { type InternalAxiosRequestConfig, AxiosError } from 'axios';
+import axios, { type InternalAxiosRequestConfig, type AxiosError } from 'axios';
 import { tokenStore } from './token-store';
 
 export const api = axios.create({

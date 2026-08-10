@@ -26,19 +26,24 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
   }
 
-  async validate(
+  validate(
     _accessToken: string,
     _refreshToken: string,
-    profile: any,
+    profile: {
+      name?: { givenName?: string; familyName?: string };
+      emails?: Array<{ value: string }>;
+      photos?: Array<{ value: string }>;
+    },
     done: VerifyCallback,
-  ): Promise<any> {
+  ): void {
     const { name, emails, photos } = profile;
     const givenName = name?.givenName || '';
     const familyName = name?.familyName || '';
-    const fullName = `${givenName} ${familyName}`.trim() || emails[0].value;
+    const email = emails?.[0]?.value || '';
+    const fullName = `${givenName} ${familyName}`.trim() || email;
 
     const user = {
-      email: emails[0].value,
+      email,
       name: fullName,
       avatar: photos?.[0]?.value || null,
     };

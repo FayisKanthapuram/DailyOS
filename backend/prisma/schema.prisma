@@ -7,22 +7,211 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String       @id @default(cuid())
-  email     String       @unique
-  name      String?
-  password  String?
-  avatar           String?
-  refreshTokenHash String?      @map("refresh_token_hash")
-  provider         AuthProvider @default(LOCAL)
-  isActive  Boolean      @default(true)
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
-
-  @@map("users")
-}
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
 
 enum AuthProvider {
   LOCAL
   GOOGLE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum Priority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ─────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  name             String?
+  password         String?
+  avatar           String?
+  timezone         String       @default("UTC")
+  refreshTokenHash String?      @map("refresh_token_hash")
+  provider         AuthProvider @default(LOCAL)
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  categories         Category[]
+  tags               Tag[]
+  tasks              Task[]
+  dailyTaskTemplates DailyTaskTemplate[]
+  dailyTaskInstances DailyTaskInstance[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Category
+// ─────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  color     String   @default("#6366f1")
+  icon      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks              Task[]
+  dailyTaskTemplates DailyTaskTemplate[]
+
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────
+// Tag
+// ─────────────────────────────────────────────
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  color     String   @default("#64748b")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks      TaskTag[]
+  dailyTasks DailyTaskTemplateTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+// ─────────────────────────────────────────────
+// Daily Task Template (habit/rule definition)
+// ─────────────────────────────────────────────
+
+model DailyTaskTemplate {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  description String?
+  priority    Priority @default(NONE)
+  categoryId  String?  @map("category_id")
+  time        String?  // "HH:MM" — optional target time (for future reminders)
+  isActive    Boolean  @default(true) @map("is_active")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags      DailyTaskTemplateTag[]
+  instances DailyTaskInstance[]
+
+  @@map("daily_task_templates")
+}
+
+// ─────────────────────────────────────────────
+// Daily Task Instance (per-day immutable record)
+// ─────────────────────────────────────────────
+
+model DailyTaskInstance {
+  id            String    @id @default(cuid())
+  templateId    String    @map("template_id")
+  userId        String    @map("user_id")
+  date          String    // "YYYY-MM-DD" in user's local timezone
+  snapshotTitle String    @map("snapshot_title") // immutable copy of template.title at creation
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  completedAt   DateTime? @map("completed_at")
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, date])
+  @@map("daily_task_instances")
+}
+
+// ─────────────────────────────────────────────
+// Task (one-time normal task)
+// ─────────────────────────────────────────────
+
+model Task {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(NONE)
+  categoryId  String?    @map("category_id")
+  dueDate     String?    @map("due_date") // "YYYY-MM-DD"
+  dueTime     String?    @map("due_time") // "HH:MM"
+  completedAt DateTime?  @map("completed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags     TaskTag[]
+  subtasks Subtask[]
+
+  @@map("tasks")
+}
+
+// ─────────────────────────────────────────────
+// Subtask
+// ─────────────────────────────────────────────
+
+model Subtask {
+  id          String   @id @default(cuid())
+  taskId      String   @map("task_id")
+  title       String
+  isCompleted Boolean  @default(false) @map("is_completed")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("subtasks")
+}
+
+// ─────────────────────────────────────────────
+// Join Tables
+// ─────────────────────────────────────────────
+
+model TaskTag {
+  taskId String @map("task_id")
+  tagId  String @map("tag_id")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@map("task_tags")
+}
+
+model DailyTaskTemplateTag {
+  templateId String @map("template_id")
+  tagId      String @map("tag_id")
+
+  template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tag      Tag               @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, tagId])
+  @@map("daily_task_template_tags")
 }

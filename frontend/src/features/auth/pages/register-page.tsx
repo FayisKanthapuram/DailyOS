@@ -33,9 +33,12 @@ export function RegisterPage() {
         password: data.password,
       });
       navigate('/dashboard', { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        err.response?.data?.message || err.message || 'Registration failed. Please try again.';
+        errorObj.response?.data?.message ||
+        errorObj.message ||
+        'Registration failed. Please try again.';
       setApiError(typeof message === 'string' ? message : 'Registration failed');
     }
   };

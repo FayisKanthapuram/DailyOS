@@ -4,6 +4,7 @@ export interface User {
   name: string | null;
   avatar: string | null;
   provider: 'LOCAL' | 'GOOGLE';
+  timezone?: string;
   createdAt: string;
 }
 
@@ -16,6 +17,7 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
+  timezone?: string;
 }
 
 export interface LoginPayload {
