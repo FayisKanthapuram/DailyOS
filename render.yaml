@@ -1,0 +1,65 @@
+# render.yaml — DailyOS Render Infrastructure
+# ============================================================
+# This file defines the DailyOS backend service for Render.
+# It does NOT contain secrets — all secrets are configured in
+# the Render dashboard under "Environment Variables".
+#
+# Documentation: https://render.com/docs/blueprint-spec
+# ============================================================
+
+services:
+  - type: web
+    name: dailyos-backend
+    runtime: node
+    rootDir: backend
+    region: oregon  # Change to: ohio, virginia, frankfurt, singapore as needed
+
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:migrate
+
+    # Render injects PORT automatically. Our app reads process.env.PORT.
+    # Do NOT hardcode a port here.
+
+    healthCheckPath: /api/health
+
+    # Auto-deploy on push to main branch
+    autoDeploy: true
+
+    envVars:
+      # ── Required: set these in Render Dashboard ──────────────────
+      - key: NODE_ENV
+        value: production
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dailyos-db
+          property: connectionString
+
+      - key: JWT_SECRET
+        generateValue: false  # Set manually in dashboard — use openssl rand -hex 64
+
+      - key: JWT_REFRESH_SECRET
+        generateValue: false  # Set manually in dashboard — use openssl rand -hex 64
+
+      - key: FRONTEND_URL
+        sync: false           # Set manually in dashboard after Vercel deployment
+
+      - key: JWT_ACCESS_EXPIRATION
+        value: 15m
+
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+
+      # ── Optional: set in dashboard only if Google OAuth is enabled ──
+      # - key: GOOGLE_CLIENT_ID
+      #   sync: false
+      # - key: GOOGLE_CLIENT_SECRET
+      #   sync: false
+      # - key: GOOGLE_CALLBACK_URL
+      #   sync: false
+
+databases:
+  - name: dailyos-db
+    databaseName: dailyos
+    plan: free               # Upgrade to starter/standard for production workloads
+    region: oregon           # Must match the web service region

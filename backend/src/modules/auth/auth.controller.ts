@@ -137,8 +137,12 @@ export class AuthController {
   private setRefreshTokenCookie(res: Response, refreshToken: string): void {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
+      // secure must be true in production (HTTPS) — required for sameSite: 'none'
       secure: this.configService.isProduction,
-      sameSite: 'lax',
+      // sameSite MUST be 'none' for cross-site deployments (e.g. Vercel frontend → Render backend).
+      // 'lax' does NOT send cookies on cross-origin subresource requests (POST /api/auth/refresh),
+      // which would silently break token refresh. 'none' requires secure: true.
+      sameSite: this.configService.isProduction ? 'none' : 'lax',
       path: '/api/auth',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });

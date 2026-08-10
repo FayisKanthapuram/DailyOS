@@ -24,8 +24,10 @@ import { useUpdateDailyInstance } from '@/features/tasks/hooks/use-daily-tasks';
 import { useUpdateTask } from '@/features/tasks/hooks/use-tasks';
 import type { CalendarViewMode, CalendarEventItem } from '../types/calendar.types';
 import type { Task, DailyTaskTemplate } from '@/features/tasks/types/task.types';
+import { usePageMeta } from '@/lib/use-page-meta';
 
 export function CalendarPage() {
+  usePageMeta({ title: 'Calendar — DailyOS', robots: 'noindex, nofollow' });
   const qc = useQueryClient();
   const { user } = useAuth();
   const userTimezone = user?.timezone || 'UTC';

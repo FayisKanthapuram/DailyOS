@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
 import { useTodayStats, useRecurringStats } from '@/features/tasks/hooks/use-stats';
 import { Link } from 'react-router';
+import { usePageMeta } from '@/lib/use-page-meta';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -12,6 +13,7 @@ function getGreeting(): string {
 }
 
 export function DashboardPage() {
+  usePageMeta({ title: 'Dashboard — DailyOS', robots: 'noindex, nofollow' });
   const { data: stats, isLoading } = useTodayStats();
 
   const statCards = [

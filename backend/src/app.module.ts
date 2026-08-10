@@ -11,7 +11,6 @@ import { TasksModule } from './modules/tasks/tasks.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
 import { CalendarModule } from './modules/calendar/calendar.module.js';
 import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 
 @Module({
   imports: [
@@ -33,7 +32,6 @@ import { AppService } from './app.service.js';
   ],
   controllers: [AppController],
   providers: [
-    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

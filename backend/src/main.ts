@@ -21,9 +21,24 @@ async function bootstrap(): Promise<void> {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // CORS
+  // CORS — support comma-separated CORS_ORIGIN list or fall back to FRONTEND_URL
+  const allowedOrigins = configService.corsOrigins;
   app.enableCors({
-    origin: configService.frontendUrl,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow requests with no origin (mobile apps, curl, Postman in dev)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+      }
+    },
     credentials: true,
   });
 
@@ -42,32 +57,36 @@ async function bootstrap(): Promise<void> {
   // Global interceptors
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Swagger Documentation Setup
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('DailyOS API')
-    .setDescription('Production-ready API documentation for DailyOS productivity platform.')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT Access Token',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
-    .addTag('Auth', 'Authentication & User Session Endpoints')
-    .build();
+  // Swagger — only in development
+  if (configService.isDevelopment) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('DailyOS API')
+      .setDescription('API documentation for DailyOS productivity platform.')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT Access Token',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag('Auth', 'Authentication & User Session Endpoints')
+      .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+    logger.log(
+      `Swagger documentation available at http://localhost:${configService.port}/api/docs`,
+    );
+  }
 
   const port = configService.port;
   await app.listen(port);
-  logger.log(`Application running on port ${port}`);
-  logger.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
+  logger.log(`Application running on port ${port} [${configService.nodeEnv}]`);
 }
 
 void bootstrap();

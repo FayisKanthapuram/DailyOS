@@ -29,11 +29,12 @@ export class AppConfigService {
     return this.configService.getOrThrow<string>('JWT_SECRET');
   }
 
+  /**
+   * JWT refresh secret — required in production.
+   * Uses getOrThrow so a missing value fails fast at startup.
+   */
   get jwtRefreshSecret(): string {
-    return this.configService.get<string>(
-      'JWT_REFRESH_SECRET',
-      'supersecret_jwt_refresh_key_change_in_prod',
-    );
+    return this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
   }
 
   get jwtAccessExpiration(): string {
@@ -46,6 +47,22 @@ export class AppConfigService {
 
   get frontendUrl(): string {
     return this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+  }
+
+  /**
+   * Returns the list of allowed CORS origins.
+   * CORS_ORIGIN can be a comma-separated list (e.g. "https://app.example.com,https://www.example.com").
+   * Falls back to FRONTEND_URL for single-origin setups.
+   */
+  get corsOrigins(): string[] {
+    const corsOrigin = this.configService.get<string>('CORS_ORIGIN');
+    if (corsOrigin) {
+      return corsOrigin
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+    }
+    return [this.frontendUrl];
   }
 
   get googleClientId(): string | undefined {

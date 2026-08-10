@@ -31,6 +31,12 @@ const TasksPage = lazy(() =>
 const CalendarPage = lazy(() =>
   import('@/features/calendar/pages/calendar-page').then((m) => ({ default: m.CalendarPage })),
 );
+const PrivacyPage = lazy(() =>
+  import('@/features/legal/pages/privacy-page').then((m) => ({ default: m.PrivacyPage })),
+);
+const TermsPage = lazy(() =>
+  import('@/features/legal/pages/terms-page').then((m) => ({ default: m.TermsPage })),
+);
 const NotFoundPage = lazy(() =>
   import('@/features/not-found/pages/not-found-page').then((m) => ({
     default: m.NotFoundPage,
@@ -56,6 +62,24 @@ export const router = createBrowserRouter([
     element: (
       <SuspenseWrapper>
         <LandingPage />
+      </SuspenseWrapper>
+    ),
+  },
+
+  // Legal pages (public, no layout)
+  {
+    path: '/privacy',
+    element: (
+      <SuspenseWrapper>
+        <PrivacyPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/terms',
+    element: (
+      <SuspenseWrapper>
+        <TermsPage />
       </SuspenseWrapper>
     ),
   },

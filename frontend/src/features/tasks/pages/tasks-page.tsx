@@ -16,8 +16,10 @@ import {
 } from '../hooks/use-daily-tasks';
 import { useCategories } from '../hooks/use-categories';
 import type { UnifiedTask, DailyTaskTemplate } from '../types/task.types';
+import { usePageMeta } from '@/lib/use-page-meta';
 
 export function TasksPage() {
+  usePageMeta({ title: 'Tasks — DailyOS', robots: 'noindex, nofollow' });
   // Date selection state (YYYY-MM-DD)
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);

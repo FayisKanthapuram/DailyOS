@@ -3,13 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="DailyOS — Your personal productivity operating system. Organize tasks, manage your calendar, and boost focus." />
+
+    <!-- Primary Meta -->
+    <title>DailyOS — Plan Your Day. Build Better Habits.</title>
+    <meta
+      name="description"
+      content="Organize tasks, build recurring daily, weekly, and monthly habits, plan your calendar, and track your productivity. A free task and habit planner."
+    />
+    <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#3b82f6" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DailyOS" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="DailyOS — Plan Your Day. Build Better Habits." />
+    <meta
+      property="og:description"
+      content="Organize tasks, build recurring daily, weekly, and monthly habits, plan your calendar, and track your productivity. A free task and habit planner."
+    />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DailyOS — Plan Your Day. Build Better Habits." />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DailyOS — Plan Your Day. Build Better Habits." />
+    <meta
+      name="twitter:description"
+      content="Organize tasks, build recurring habits, plan your calendar, and track your productivity."
+    />
+    <meta name="twitter:image" content="/og-image.jpg" />
+
+    <!-- Icons & PWA -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-512.jpg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Fonts — preconnect first for performance, font-display=swap to prevent render-blocking -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>DailyOS — Productivity OS</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "name": "DailyOS",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web",
+            "description": "A task and recurring habit planner with calendar planning and productivity statistics.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "name": "DailyOS",
+            "description": "Plan your day. Build better habits."
+          },
+          {
+            "@type": "Organization",
+            "name": "DailyOS"
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

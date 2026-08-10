@@ -2,7 +2,7 @@ import axios, { type InternalAxiosRequestConfig, type AxiosError } from 'axios';
 import { tokenStore } from './token-store';
 
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -56,8 +56,10 @@ api.interceptors.response.use(
 
       activeRefreshPromise = (async () => {
         try {
-          const { data } = await axios.post<{ accessToken: string }>(
-            '/api/auth/refresh',
+          // IMPORTANT: Use the configured `api` instance (respects VITE_API_URL in production)
+          // NOT bare axios, which would use a hardcoded localhost-relative URL
+          const { data } = await api.post<{ accessToken: string }>(
+            '/auth/refresh',
             {},
             { withCredentials: true },
           );

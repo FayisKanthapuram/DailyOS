@@ -19,4 +19,33 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Disable sourcemaps in production for security
+    sourcemap: false,
+    rolldownOptions: {
+      output: {
+        // Manual chunk splitting for better caching
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-motion';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('axios') || id.includes('@tanstack')) {
+              return 'vendor-data';
+            }
+            if (id.includes('luxon')) {
+              return 'vendor-date';
+            }
+            return 'vendor';
+          }
+        }
+      },
+    },
+  },
 });
