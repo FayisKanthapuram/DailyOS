@@ -1,344 +1,371 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Repeat2, ListTodo, RotateCcw } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Repeat2, ListTodo, Clock, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DailyTaskCard } from '../components/daily-task-card';
-import { TaskCard } from '../components/task-card';
-import { DailyTaskForm } from '../components/daily-task-form';
+import { UnifiedTaskCard } from '../components/unified-task-card';
 import { TaskForm } from '../components/task-form';
+import { HabitManagementDrawer } from '../components/habit-management-drawer';
+import { DailyTaskForm } from '../components/daily-task-form';
 import { EmptyState } from '../components/empty-state';
+import { useUnifiedTasks, useUpdateTask, useDeleteTask } from '../hooks/use-tasks';
 import {
-  useTodayInstances,
   useUpdateDailyInstance,
-  useDeactivateDailyTask,
+  useCreateDailyException,
+  useDeleteDailyException,
 } from '../hooks/use-daily-tasks';
-import { useTasks, useUpdateTask, useDeleteTask } from '../hooks/use-tasks';
-import type { DailyTaskTemplate, Task, TaskStatus } from '../types/task.types';
-
-type Tab = 'daily' | 'tasks';
-type TaskStatusFilter = 'ALL' | TaskStatus;
-
-const STATUS_TABS: Array<{ value: TaskStatusFilter; label: string }> = [
-  { value: 'ALL', label: 'All' },
-  { value: 'TODO', label: 'To Do' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'COMPLETED', label: 'Done' },
-];
-
-function getTodayLocalDate(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function formatDisplayDate(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-}
+import { useCategories } from '../hooks/use-categories';
+import type { UnifiedTask, DailyTaskTemplate } from '../types/task.types';
 
 export function TasksPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('daily');
-  const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>('ALL');
-  const [dailyFormOpen, setDailyFormOpen] = useState(false);
+  // Date selection state (YYYY-MM-DD)
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+
+  // Query unified tasks for selected date
+  const { data: unifiedData, isLoading, refetch } = useUnifiedTasks(selectedDate);
+  const tasks = useMemo(() => unifiedData?.tasks ?? [], [unifiedData?.tasks]);
+  const todayStr = unifiedData?.today ?? selectedDate;
+
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'COMPLETED'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const { data: categories = [] } = useCategories();
+
+  // Modals / Drawers
   const [taskFormOpen, setTaskFormOpen] = useState(false);
-  const [editingDailyTemplate, setEditingDailyTemplate] = useState<DailyTaskTemplate | undefined>();
-  const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [editingTask, setEditingTask] = useState<UnifiedTask | undefined>();
+  const [habitDrawerOpen, setHabitDrawerOpen] = useState(false);
+  const [dailyFormOpen, setDailyFormOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<DailyTaskTemplate | undefined>();
 
-  const todayDate = getTodayLocalDate();
-
-  // Daily tasks
-  const { data: instances = [], isLoading: isDailyLoading } = useTodayInstances(todayDate);
-  const updateInstance = useUpdateDailyInstance();
-  const deactivateDailyTask = useDeactivateDailyTask();
-
-  // Normal tasks
-  const taskFilters = statusFilter === 'ALL' ? {} : { status: statusFilter as TaskStatus };
-  const { data: tasks = [], isLoading: isTasksLoading } = useTasks(taskFilters);
+  // Mutations
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const updateDailyInstance = useUpdateDailyInstance();
+  const createException = useCreateDailyException();
+  const deleteException = useDeleteDailyException();
 
-  const completedCount = instances.filter((i) => i.isCompleted).length;
-  const totalCount = instances.length;
-
-  const handleToggleInstance = (instanceId: string, isCompleted: boolean) => {
-    updateInstance.mutate({ instanceId, payload: { isCompleted } });
+  // Navigation handlers
+  const handlePrevDate = () => {
+    const dt = new Date(`${selectedDate}T00:00:00`);
+    dt.setDate(dt.getDate() - 1);
+    setSelectedDate(dt.toISOString().slice(0, 10));
   };
 
-  const handleEditDailyTask = (templateId: string) => {
-    const instance = instances.find((i) => i.templateId === templateId);
-    if (instance) {
-      setEditingDailyTemplate(instance.template);
-      setDailyFormOpen(true);
-    }
+  const handleNextDate = () => {
+    const dt = new Date(`${selectedDate}T00:00:00`);
+    dt.setDate(dt.getDate() + 1);
+    setSelectedDate(dt.toISOString().slice(0, 10));
   };
 
-  const handleDeleteDailyTask = (templateId: string) => {
-    if (confirm('Deactivate this daily task? Historical completions will be preserved.')) {
-      deactivateDailyTask.mutate(templateId);
-    }
+  const handleToday = () => {
+    setSelectedDate(todayStr);
   };
 
-  const handleTaskStatusChange = (taskId: string, completed: boolean) => {
-    updateTask.mutate({
-      id: taskId,
-      payload: { status: completed ? 'COMPLETED' : 'TODO' },
+  // Header date text
+  const formattedDateTitle = useMemo(() => {
+    const dt = new Date(`${selectedDate}T00:00:00`);
+    const isToday = selectedDate === todayStr;
+    const dateText = dt.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
     });
+    return isToday ? `Today · ${dateText}` : dateText;
+  }, [selectedDate, todayStr]);
+
+  // Filtering
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      // Status filter
+      if (statusFilter === 'TODO' && (t.completed || t.skipped)) return false;
+      if (statusFilter === 'COMPLETED' && !t.completed) return false;
+
+      // Category filter
+      if (categoryFilter !== 'ALL' && t.category?.id !== categoryFilter) return false;
+
+      return true;
+    });
+  }, [tasks, statusFilter, categoryFilter]);
+
+  // Split into Overdue vs Main tasks
+  const overdueTasks = useMemo(() => filteredTasks.filter((t) => t.isOverdue), [filteredTasks]);
+
+  const mainTasks = useMemo(() => filteredTasks.filter((t) => !t.isOverdue), [filteredTasks]);
+
+  // Status toggle
+  const handleToggleStatus = async (task: UnifiedTask) => {
+    if (task.source === 'DAILY' && task.instanceId) {
+      await updateDailyInstance.mutateAsync({
+        instanceId: task.instanceId,
+        payload: { isCompleted: !task.completed },
+      });
+    } else if (task.source === 'NORMAL' && task.originalTask) {
+      await updateTask.mutateAsync({
+        id: task.originalTask.id,
+        payload: { status: task.completed ? 'TODO' : 'COMPLETED' },
+      });
+    }
   };
 
-  const handleEditTask = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (task) {
+  // Skip daily habit
+  const handleSkip = async (task: UnifiedTask) => {
+    if (task.templateId) {
+      await createException.mutateAsync({
+        templateId: task.templateId,
+        date: selectedDate,
+        type: 'SKIP',
+      });
+    }
+  };
+
+  // Undo skip daily habit
+  const handleUndoSkip = async (task: UnifiedTask) => {
+    if (task.templateId) {
+      await deleteException.mutateAsync({
+        templateId: task.templateId,
+        date: selectedDate,
+      });
+    }
+  };
+
+  // Edit action
+  const handleEdit = (task: UnifiedTask) => {
+    if (task.source === 'NORMAL' && task.originalTask) {
       setEditingTask(task);
       setTaskFormOpen(true);
+    } else if (task.originalTemplate || task.templateId) {
+      const template = task.originalTemplate || task.originalInstance?.template;
+      if (template) {
+        setEditingTemplate(template);
+        setDailyFormOpen(true);
+      }
     }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    if (confirm('Delete this task? This cannot be undone.')) {
-      deleteTask.mutate(taskId);
+  // Delete action
+  const handleDelete = async (task: UnifiedTask) => {
+    if (task.source === 'NORMAL' && task.originalTask) {
+      if (confirm(`Delete task "${task.title}"?`)) {
+        await deleteTask.mutateAsync(task.originalTask.id);
+      }
     }
   };
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Page header */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
+      {/* Date Header & Action Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">Tasks</h1>
-          <p className="mt-0.5 text-sm text-[hsl(var(--foreground-secondary))]">
-            {activeTab === 'daily'
-              ? `${formatDisplayDate(todayDate)} · ${completedCount}/${totalCount} complete`
-              : 'Your one-time tasks'}
+          <h1 className="text-xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+            {formattedDateTitle}
+          </h1>
+          <p className="mt-0.5 text-xs text-[hsl(var(--foreground-muted))]">
+            {unifiedData
+              ? `${unifiedData.stats.completed}/${unifiedData.stats.total} completed · ${unifiedData.stats.skipped} skipped`
+              : 'Loading tasks...'}
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingDailyTemplate(undefined);
-            setEditingTask(undefined);
-            if (activeTab === 'daily') setDailyFormOpen(true);
-            else setTaskFormOpen(true);
-          }}
-          className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] shadow-sm transition-opacity hover:opacity-90"
-        >
-          <Plus size={16} />
-          {activeTab === 'daily' ? 'Daily Task' : 'Task'}
-        </button>
-      </motion.div>
+        {/* Date Navigator */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-0.5 shadow-xs">
+            <button
+              onClick={handlePrevDate}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--background-secondary))]"
+              aria-label="Previous date"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={handleToday}
+              className="rounded-md px-2 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--background-secondary))]"
+            >
+              Today
+            </button>
+            <button
+              onClick={handleNextDate}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--background-secondary))]"
+              aria-label="Next date"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
 
-      {/* Tab switcher */}
-      <div className="mt-6 flex gap-1 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-secondary))] p-1">
-        {(
-          [
-            { value: 'daily', label: 'Daily Tasks', icon: Repeat2 },
-            { value: 'tasks', label: 'Tasks', icon: ListTodo },
-          ] as const
-        ).map((tab) => (
+          {/* Manage Habits trigger */}
           <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
-              activeTab === tab.value
-                ? 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm'
-                : 'text-[hsl(var(--foreground-muted))] hover:text-[hsl(var(--foreground-secondary))]',
-            )}
+            onClick={() => setHabitDrawerOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-xs font-medium text-[hsl(var(--foreground))] shadow-xs transition-colors hover:bg-[hsl(var(--background-secondary))]"
           >
-            <tab.icon size={15} />
-            {tab.label}
+            <Repeat2 size={14} className="text-[hsl(var(--primary))]" />
+            <span className="hidden sm:inline">Manage Habits</span>
           </button>
-        ))}
+
+          {/* Desktop "+ New Task" */}
+          <button
+            onClick={() => {
+              setEditingTask(undefined);
+              setTaskFormOpen(true);
+            }}
+            className="hidden md:flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-xs font-medium text-[hsl(var(--primary-foreground))] shadow-xs transition-opacity hover:opacity-90"
+          >
+            <Plus size={14} />
+            New Task
+          </button>
+        </div>
       </div>
 
-      {/* Content */}
-      <AnimatePresence mode="wait">
-        {activeTab === 'daily' ? (
-          <motion.div
-            key="daily"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4"
-          >
-            {/* Progress bar */}
-            {totalCount > 0 && (
-              <div className="mb-4">
-                <div className="mb-1.5 flex items-center justify-between text-xs text-[hsl(var(--foreground-muted))]">
-                  <span>
-                    {completedCount} of {totalCount} completed
-                  </span>
-                  <span>{Math.round((completedCount / totalCount) * 100)}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-[hsl(var(--background-tertiary))]">
-                  <motion.div
-                    className="h-full rounded-full bg-[hsl(var(--primary))]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(completedCount / totalCount) * 100}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-            )}
+      {/* Filter Bar */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-y border-[hsl(var(--border))] py-3">
+        {/* Status segment pills */}
+        <div className="flex gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background-secondary))] p-0.5">
+          {(['ALL', 'TODO', 'COMPLETED'] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={cn(
+                'rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-all',
+                statusFilter === st
+                  ? 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-xs'
+                  : 'text-[hsl(var(--foreground-muted))] hover:text-[hsl(var(--foreground-secondary))]',
+              )}
+            >
+              {st === 'ALL' ? 'All' : st === 'TODO' ? 'To Do' : 'Completed'}
+            </button>
+          ))}
+        </div>
 
-            {isDailyLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-16 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]"
-                  />
-                ))}
-              </div>
-            ) : instances.length === 0 ? (
-              <EmptyState
-                icon={<Repeat2 size={24} />}
-                title="No daily tasks"
-                description="Create your first daily task to start building consistent habits."
-                action={
-                  <button
-                    onClick={() => setDailyFormOpen(true)}
-                    className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))]"
-                  >
-                    <Plus size={14} />
-                    Add daily task
-                  </button>
-                }
-              />
-            ) : (
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {instances.map((instance) => (
-                    <DailyTaskCard
-                      key={instance.id}
-                      instance={instance}
-                      onToggle={handleToggleInstance}
-                      onEdit={handleEditDailyTask}
-                      onDelete={handleDeleteDailyTask}
-                      isToggling={updateInstance.isPending}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="tasks"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4"
-          >
-            {/* Status filter tabs */}
-            <div className="mb-4 flex gap-1">
-              {STATUS_TABS.map((tab) => (
-                <button
-                  key={tab.value}
-                  onClick={() => setStatusFilter(tab.value)}
-                  className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                    statusFilter === tab.value
-                      ? 'bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]'
-                      : 'text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground-secondary))]',
-                  )}
-                >
-                  {tab.label}
-                </button>
+        {/* Category filter dropdown */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <Filter size={13} className="text-[hsl(var(--foreground-muted))]" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-2.5 py-1 text-xs text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]"
+            >
+              <option value="ALL">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
-            </div>
+            </select>
+          </div>
+        )}
+      </div>
 
-            {isTasksLoading ? (
+      {/* Task List Content */}
+      <div className="mt-4 space-y-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            <div className="h-16 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]" />
+            <div className="h-16 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]" />
+            <div className="h-16 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]" />
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <EmptyState
+            icon={<ListTodo size={24} />}
+            title="No tasks for this day"
+            description="Create a task or recurring habit to populate your daily workflow!"
+            action={
+              <button
+                onClick={() => {
+                  setEditingTask(undefined);
+                  setTaskFormOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-xs font-medium text-[hsl(var(--primary-foreground))]"
+              >
+                <Plus size={14} />
+                Create task
+              </button>
+            }
+          />
+        ) : (
+          <>
+            {/* Overdue Section (if viewing Today and overdue tasks exist) */}
+            {overdueTasks.length > 0 && (
               <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-16 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]"
-                  />
-                ))}
-              </div>
-            ) : tasks.length === 0 ? (
-              <EmptyState
-                icon={<ListTodo size={24} />}
-                title={
-                  statusFilter === 'ALL'
-                    ? 'No tasks yet'
-                    : `No ${statusFilter.toLowerCase().replace('_', ' ')} tasks`
-                }
-                description={
-                  statusFilter === 'ALL'
-                    ? 'Create your first task to get started.'
-                    : 'Try a different filter or create a new task.'
-                }
-                action={
-                  statusFilter === 'ALL' ? (
-                    <button
-                      onClick={() => setTaskFormOpen(true)}
-                      className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))]"
-                    >
-                      <Plus size={14} />
-                      Create task
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setStatusFilter('ALL')}
-                      className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm text-[hsl(var(--foreground-secondary))]"
-                    >
-                      <RotateCcw size={14} />
-                      Clear filter
-                    </button>
-                  )
-                }
-              />
-            ) : (
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {tasks.map((task) => (
-                    <TaskCard
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--destructive))]">
+                  <Clock size={13} />
+                  <span>OVERDUE ({overdueTasks.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {overdueTasks.map((task) => (
+                    <UnifiedTaskCard
                       key={task.id}
                       task={task}
-                      onStatusChange={handleTaskStatusChange}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      isUpdating={updateTask.isPending}
+                      onToggleStatus={handleToggleStatus}
+                      onSkip={handleSkip}
+                      onUndoSkip={handleUndoSkip}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
                     />
                   ))}
-                </AnimatePresence>
+                </div>
               </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Forms */}
-      <DailyTaskForm
-        open={dailyFormOpen}
-        onClose={() => {
-          setDailyFormOpen(false);
-          setEditingDailyTemplate(undefined);
-        }}
-        editingTemplate={editingDailyTemplate}
-      />
+            {/* Main Daily Task List */}
+            {mainTasks.length > 0 && (
+              <div className="space-y-2">
+                {overdueTasks.length > 0 && (
+                  <div className="pt-2 text-xs font-bold text-[hsl(var(--foreground-secondary))] uppercase">
+                    SCHEDULED TASKS ({mainTasks.length})
+                  </div>
+                )}
+                {mainTasks.map((task) => (
+                  <UnifiedTaskCard
+                    key={task.id}
+                    task={task}
+                    onToggleStatus={handleToggleStatus}
+                    onSkip={handleSkip}
+                    onUndoSkip={handleUndoSkip}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Forms & Drawers */}
       <TaskForm
         open={taskFormOpen}
         onClose={() => {
           setTaskFormOpen(false);
           setEditingTask(undefined);
+          refetch();
         }}
-        editingTask={editingTask}
+        editingTask={editingTask?.originalTask}
+        defaultDate={selectedDate}
+      />
+
+      <HabitManagementDrawer
+        open={habitDrawerOpen}
+        onClose={() => setHabitDrawerOpen(false)}
+        onNewHabit={() => {
+          setEditingTemplate(undefined);
+          setDailyFormOpen(true);
+        }}
+        onEditHabit={(template) => {
+          setEditingTemplate(template);
+          setDailyFormOpen(true);
+        }}
+      />
+
+      <DailyTaskForm
+        open={dailyFormOpen}
+        onClose={() => {
+          setDailyFormOpen(false);
+          setEditingTemplate(undefined);
+          refetch();
+        }}
+        editingTemplate={editingTemplate}
       />
     </div>
   );

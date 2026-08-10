@@ -49,11 +49,14 @@ model User {
   updatedAt        DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  categories         Category[]
-  tags               Tag[]
-  tasks              Task[]
-  dailyTaskTemplates DailyTaskTemplate[]
-  dailyTaskInstances DailyTaskInstance[]
+  categories                     Category[]
+  tags                           Tag[]
+  tasks                          Task[]
+  dailyTaskTemplates             DailyTaskTemplate[]
+  dailyTaskInstances             DailyTaskInstance[]
+  dailyTaskExceptions            DailyTaskException[]
+  recurringFrequencyHistories    RecurringTaskFrequencyHistory[]
+  recurringLifecycleHistories    RecurringTaskLifecycleHistory[]
 
   @@map("users")
 }
@@ -98,29 +101,74 @@ model Tag {
   @@map("tags")
 }
 
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum TemplateState {
+  ACTIVE
+  INACTIVE
+}
+
 // ─────────────────────────────────────────────
 // Daily Task Template (habit/rule definition)
 // ─────────────────────────────────────────────
 
 model DailyTaskTemplate {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
+  id          String              @id @default(cuid())
+  userId      String              @map("user_id")
   title       String
   description String?
-  priority    Priority @default(NONE)
-  categoryId  String?  @map("category_id")
-  time        String?  // "HH:MM" — optional target time (for future reminders)
-  isActive    Boolean  @default(true) @map("is_active")
-  order       Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  priority    Priority            @default(NONE)
+  categoryId  String?             @map("category_id")
+  time        String?             // "HH:MM" — optional target time (for future reminders)
+  frequency   RecurrenceFrequency @default(DAILY)
+  isActive    Boolean             @default(true) @map("is_active")
+  order       Int                 @default(0)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
 
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category  Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  tags      DailyTaskTemplateTag[]
-  instances DailyTaskInstance[]
+  user             User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         Category?                       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags             DailyTaskTemplateTag[]
+  instances        DailyTaskInstance[]
+  exceptions       DailyTaskException[]
+  frequencyHistory RecurringTaskFrequencyHistory[]
+  lifecycleHistory RecurringTaskLifecycleHistory[]
 
   @@map("daily_task_templates")
+}
+
+model RecurringTaskFrequencyHistory {
+  id            String              @id @default(cuid())
+  templateId    String              @map("template_id")
+  userId        String              @map("user_id")
+  frequency     RecurrenceFrequency
+  effectiveDate String              // "YYYY-MM-DD" in user timezone
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, effectiveDate])
+  @@map("recurring_task_frequency_history")
+}
+
+model RecurringTaskLifecycleHistory {
+  id            String        @id @default(cuid())
+  templateId    String        @map("template_id")
+  userId        String        @map("user_id")
+  state         TemplateState
+  effectiveDate String        // "YYYY-MM-DD" in user timezone
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, effectiveDate])
+  @@map("recurring_task_lifecycle_history")
 }
 
 // ─────────────────────────────────────────────
@@ -128,22 +176,47 @@ model DailyTaskTemplate {
 // ─────────────────────────────────────────────
 
 model DailyTaskInstance {
-  id            String    @id @default(cuid())
-  templateId    String    @map("template_id")
-  userId        String    @map("user_id")
-  date          String    // "YYYY-MM-DD" in user's local timezone
-  snapshotTitle String    @map("snapshot_title") // immutable copy of template.title at creation
-  isCompleted   Boolean   @default(false) @map("is_completed")
-  completedAt   DateTime? @map("completed_at")
-  notes         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                String              @id @default(cuid())
+  templateId        String              @map("template_id")
+  userId            String              @map("user_id")
+  date              String              // "YYYY-MM-DD" in user's local timezone
+  snapshotTitle     String              @map("snapshot_title") // immutable copy of template.title at creation
+  isCompleted       Boolean             @default(false) @map("is_completed")
+  completedAt       DateTime?           @map("completed_at")
+  notes             String?
+  frequencySnapshot RecurrenceFrequency @default(DAILY) @map("frequency_snapshot")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, date])
   @@map("daily_task_instances")
+}
+
+enum ExceptionType {
+  SKIP
+}
+
+// ─────────────────────────────────────────────
+// Daily Task Exception (per-date skip/exception record)
+// ─────────────────────────────────────────────
+
+model DailyTaskException {
+  id                String              @id @default(cuid())
+  templateId        String              @map("template_id")
+  userId            String              @map("user_id")
+  date              String              // "YYYY-MM-DD" in user's local timezone
+  type              ExceptionType       @default(SKIP)
+  frequencySnapshot RecurrenceFrequency @default(DAILY) @map("frequency_snapshot")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  template DailyTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, date])
+  @@map("daily_task_exceptions")
 }
 
 // ─────────────────────────────────────────────

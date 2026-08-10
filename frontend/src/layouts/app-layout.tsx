@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebarStore } from '@/stores/sidebar.store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
+import { TaskForm } from '@/features/tasks/components/task-form';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +41,9 @@ const navigation = [
 const bottomNav = [{ name: 'Settings', href: '/settings', icon: Settings, disabled: true }];
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768,
+  );
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -54,6 +59,13 @@ function Sidebar() {
   const { isOpen, isCollapsed, close, toggleCollapse } = useSidebarStore();
   const isMobile = useIsMobile();
   const location = useLocation();
+
+  // Ensure mobile drawer is closed on route change
+  useEffect(() => {
+    if (isMobile) {
+      close();
+    }
+  }, [location.pathname, isMobile, close]);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
@@ -257,10 +269,23 @@ function Navbar() {
 
 /**
  * AppLayout — wraps all authenticated/dashboard pages.
- * Responsive sidebar + top navbar + main content area.
+ * Responsive sidebar + top navbar + main content area + mobile bottom navigation.
  */
 export function AppLayout() {
   const { isCollapsed } = useSidebarStore();
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const handleOpenCreateTask = () => {
+    setTaskFormOpen(true);
+  };
+
+  const handleCloseTaskForm = () => {
+    setTaskFormOpen(false);
+    qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['calendar'] });
+    qc.invalidateQueries({ queryKey: ['stats'] });
+  };
 
   return (
     <div className="min-h-screen">
@@ -272,7 +297,7 @@ export function AppLayout() {
         className="flex min-h-screen flex-col"
       >
         <Navbar />
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 pb-20 md:p-6 md:pb-6">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -282,6 +307,12 @@ export function AppLayout() {
           </motion.div>
         </main>
       </motion.div>
+
+      {/* Mobile Bottom Navigation Bar & FAB */}
+      <MobileBottomNav onOpenCreateTask={handleOpenCreateTask} isSheetOpen={taskFormOpen} />
+
+      {/* Global Task Creation Form Modal */}
+      <TaskForm open={taskFormOpen} onClose={handleCloseTaskForm} />
     </div>
   );
 }

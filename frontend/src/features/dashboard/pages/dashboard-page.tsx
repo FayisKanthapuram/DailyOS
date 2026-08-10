@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
-import { useTodayStats } from '@/features/tasks/hooks/use-stats';
+import { useTodayStats, useRecurringStats } from '@/features/tasks/hooks/use-stats';
 import { Link } from 'react-router';
 
 function getGreeting(): string {
@@ -46,6 +47,11 @@ export function DashboardPage() {
       href: '/tasks',
     },
   ];
+
+  const [recurringPeriod, setRecurringPeriod] = useState<'today' | 'week' | 'month' | '30days'>(
+    'today',
+  );
+  const { data: recStats, isLoading: isRecLoading } = useRecurringStats(recurringPeriod);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -93,6 +99,89 @@ export function DashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Recurring Task Statistics Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="mt-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">
+              Recurring Task Statistics
+            </h2>
+            <p className="text-xs text-[hsl(var(--foreground-muted))]">
+              Occurrences breakdown by recurrence frequency
+            </p>
+          </div>
+
+          <div className="flex rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-secondary))] p-1">
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' },
+              { id: '30days', label: 'Last 30 Days' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setRecurringPeriod(p.id as 'today' | 'week' | 'month' | '30days')}
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                  recurringPeriod === p.id
+                    ? 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-xs'
+                    : 'text-[hsl(var(--foreground-muted))] hover:text-[hsl(var(--foreground))]'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            { key: 'daily', title: 'Daily Habits', data: recStats?.daily },
+            { key: 'weekly', title: 'Weekly Habits', data: recStats?.weekly },
+            { key: 'monthly', title: 'Monthly Habits', data: recStats?.monthly },
+          ].map((item) => (
+            <div
+              key={item.key}
+              className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[hsl(var(--foreground-secondary))] uppercase tracking-wider">
+                  {item.title}
+                </span>
+                <span className="text-xs font-bold text-[hsl(var(--primary))]">
+                  {isRecLoading ? '—' : `${item.data?.completionRate ?? 0}%`}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center border-t border-[hsl(var(--border))] pt-3">
+                <div>
+                  <p className="text-xs text-[hsl(var(--foreground-muted))]">Done</p>
+                  <p className="text-base font-semibold text-[hsl(var(--foreground))]">
+                    {isRecLoading ? '—' : (item.data?.completed ?? 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[hsl(var(--foreground-muted))]">Skipped</p>
+                  <p className="text-base font-semibold text-[hsl(var(--foreground-muted))]">
+                    {isRecLoading ? '—' : (item.data?.skipped ?? 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[hsl(var(--foreground-muted))]">Pending</p>
+                  <p className="text-base font-semibold text-[hsl(var(--warning))]">
+                    {isRecLoading ? '—' : (item.data?.pending ?? 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Quick actions */}
       <motion.div

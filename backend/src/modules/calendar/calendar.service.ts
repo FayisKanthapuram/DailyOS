@@ -87,6 +87,14 @@ export class CalendarService {
       orderBy: { order: 'asc' },
     });
 
+    // 5. Daily Task Exceptions (skips) in range
+    const dailyExceptions = await this.prisma.dailyTaskException.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+      },
+    });
+
     return {
       startDate,
       endDate,
@@ -95,6 +103,7 @@ export class CalendarService {
       normalTasks,
       dailyInstances,
       dailyTemplates,
+      dailyExceptions,
       unscheduledTasks,
     };
   }

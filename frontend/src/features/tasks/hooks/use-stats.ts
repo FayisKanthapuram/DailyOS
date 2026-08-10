@@ -11,3 +11,12 @@ export function useTodayStats() {
     retry: 1,
   });
 }
+
+export function useRecurringStats(period: 'today' | 'week' | 'month' | '30days' = 'today') {
+  return useQuery({
+    queryKey: ['stats', 'recurring', period],
+    queryFn: () => statsApi.getRecurring(period),
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+  });
+}

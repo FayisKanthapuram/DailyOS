@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, MaxLength, Matches, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Priority } from '@prisma/client';
+import { Priority, RecurrenceFrequency } from '@prisma/client';
 
 export class CreateDailyTaskDto {
   @ApiProperty({ example: 'Morning Workout' })
@@ -18,6 +18,11 @@ export class CreateDailyTaskDto {
   @IsOptional()
   @IsEnum(Priority)
   priority?: Priority;
+
+  @ApiPropertyOptional({ enum: RecurrenceFrequency, default: RecurrenceFrequency.DAILY })
+  @IsOptional()
+  @IsEnum(RecurrenceFrequency)
+  frequency?: RecurrenceFrequency;
 
   @ApiPropertyOptional({ example: 'category-cuid' })
   @IsOptional()

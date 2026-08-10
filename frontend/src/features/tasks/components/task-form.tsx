@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X } from 'lucide-react';
+import { X, Repeat2, CheckSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createTaskSchema, type CreateTaskFormValues } from '../schemas/task.schemas';
 import { useCategories } from '../hooks/use-categories';
 import { useTags } from '../hooks/use-tags';
 import { useCreateTask, useUpdateTask } from '../hooks/use-tasks';
+import { useCreateDailyTask } from '../hooks/use-daily-tasks';
+import { cn } from '@/lib/utils';
 import type { Task } from '../types/task.types';
 
 const PRIORITY_OPTIONS = [
@@ -30,13 +32,17 @@ interface TaskFormProps {
   open: boolean;
   onClose: () => void;
   editingTask?: Task;
+  defaultDate?: string;
 }
 
-export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
+export function TaskForm({ open, onClose, editingTask, defaultDate }: TaskFormProps) {
+  const [taskType, setTaskType] = useState<'ONE_TIME' | 'RECURRING'>('ONE_TIME');
+  const [frequency, setFrequency] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('DAILY');
   const { data: categories = [] } = useCategories();
   const { data: tags = [] } = useTags();
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
+  const createDailyMutation = useCreateDailyTask();
 
   const {
     register,
@@ -52,7 +58,7 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
       priority: 'NONE',
       status: 'TODO',
       categoryId: '',
-      dueDate: '',
+      dueDate: defaultDate ?? '',
       dueTime: '',
       tagIds: [],
     },
@@ -77,36 +83,49 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
         priority: 'NONE',
         status: 'TODO',
         categoryId: '',
-        dueDate: '',
+        dueDate: defaultDate ?? '',
         dueTime: '',
         tagIds: [],
       });
     }
-  }, [editingTask, reset, open]);
+  }, [editingTask, defaultDate, reset, open]);
 
   const onSubmit = async (values: CreateTaskFormValues) => {
-    const payload = {
-      title: values.title,
-      description: values.description || undefined,
-      priority: values.priority,
-      status: values.status,
-      categoryId: values.categoryId || undefined,
-      dueDate: values.dueDate || undefined,
-      dueTime: values.dueTime || undefined,
-      tagIds: values.tagIds,
-    };
-
-    if (editingTask) {
-      await updateMutation.mutateAsync({ id: editingTask.id, payload });
+    if (taskType === 'RECURRING' && !editingTask) {
+      await createDailyMutation.mutateAsync({
+        title: values.title,
+        description: values.description || undefined,
+        priority: values.priority,
+        frequency,
+        categoryId: values.categoryId || undefined,
+        time: values.dueTime || undefined,
+        tagIds: values.tagIds,
+      });
     } else {
-      await createMutation.mutateAsync(payload);
+      const payload = {
+        title: values.title,
+        description: values.description || undefined,
+        priority: values.priority,
+        status: values.status,
+        categoryId: values.categoryId || undefined,
+        dueDate: values.dueDate || undefined,
+        dueTime: values.dueTime || undefined,
+        tagIds: values.tagIds,
+      };
+
+      if (editingTask) {
+        await updateMutation.mutateAsync({ id: editingTask.id, payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
     }
+
     onClose();
   };
 
+  const labelCls = 'block text-xs font-semibold text-[hsl(var(--foreground-secondary))] mb-1.5';
   const inputCls =
-    'w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm text-[hsl(var(--foreground))] placeholder-[hsl(var(--foreground-muted))] outline-none focus:border-[hsl(var(--primary))] focus:ring-1 focus:ring-[hsl(var(--primary)/0.3)] transition-all';
-  const labelCls = 'block text-xs font-medium text-[hsl(var(--foreground-secondary))] mb-1';
+    'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm text-[hsl(var(--foreground))] transition-colors focus:border-[hsl(var(--primary))] focus:outline-none';
   const errorCls = 'mt-1 text-xs text-[hsl(var(--destructive))]';
 
   return (
@@ -121,25 +140,90 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
           />
           <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
             transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] w-full flex-col rounded-t-2xl border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-2xl pb-[max(1rem,env(safe-area-inset-bottom))] md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-md md:rounded-none md:border-l md:border-t-0 md:pb-0"
           >
-            <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-4">
+            {/* Mobile drag handle indicator */}
+            <div className="mx-auto my-2 h-1 w-12 rounded-full bg-[hsl(var(--border))] md:hidden" />
+
+            <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-3 md:py-4">
               <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">
                 {editingTask ? 'Edit Task' : 'New Task'}
               </h2>
               <button
                 onClick={onClose}
+                type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))]"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-5">
+              {/* Type Switcher (Creation mode only) */}
+              {!editingTask && (
+                <div className="mb-5 flex rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-secondary))] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setTaskType('ONE_TIME')}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all',
+                      taskType === 'ONE_TIME'
+                        ? 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-xs'
+                        : 'text-[hsl(var(--foreground-muted))]',
+                    )}
+                  >
+                    <CheckSquare size={14} />
+                    One-Time Task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskType('RECURRING')}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all',
+                      taskType === 'RECURRING'
+                        ? 'bg-[hsl(var(--background))] text-[hsl(var(--primary))] shadow-xs'
+                        : 'text-[hsl(var(--foreground-muted))]',
+                    )}
+                  >
+                    <Repeat2 size={14} />
+                    Recurring Daily Habit
+                  </button>
+                </div>
+              )}
+
+              {taskType === 'RECURRING' && !editingTask && (
+                <div className="mb-5">
+                  <label className={labelCls}>Recurrence Frequency</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'DAILY', label: 'Daily', desc: 'Every day' },
+                      { value: 'WEEKLY', label: 'Weekly', desc: 'Once per week' },
+                      { value: 'MONTHLY', label: 'Monthly', desc: 'Once per month' },
+                    ].map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => setFrequency(f.value as 'DAILY' | 'WEEKLY' | 'MONTHLY')}
+                        className={cn(
+                          'flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition-all',
+                          frequency === f.value
+                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))] shadow-xs font-semibold'
+                            : 'border-[hsl(var(--border))] text-[hsl(var(--foreground-secondary))] hover:bg-[hsl(var(--background-secondary))]',
+                        )}
+                      >
+                        <span className="text-xs">{f.label}</span>
+                        <span className="text-[10px] opacity-70">{f.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -148,8 +232,12 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                   </label>
                   <input
                     {...register('title')}
+                    placeholder={
+                      taskType === 'RECURRING'
+                        ? 'e.g. Go to gym, Drink water'
+                        : 'e.g. Finish project proposal'
+                    }
                     className={inputCls}
-                    placeholder="Task title..."
                     autoFocus
                   />
                   {errors.title && <p className={errorCls}>{errors.title.message}</p>}
@@ -160,24 +248,14 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                   <label className={labelCls}>Description</label>
                   <textarea
                     {...register('description')}
-                    className={`${inputCls} resize-none`}
-                    placeholder="Optional details..."
-                    rows={3}
+                    rows={2}
+                    placeholder="Optional notes or context..."
+                    className={inputCls}
                   />
                 </div>
 
-                {/* Status & Priority row */}
+                {/* Priority & Status */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Status</label>
-                    <select {...register('status')} className={inputCls}>
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                   <div>
                     <label className={labelCls}>Priority</label>
                     <select {...register('priority')} className={inputCls}>
@@ -188,6 +266,19 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                       ))}
                     </select>
                   </div>
+
+                  {taskType === 'ONE_TIME' && (
+                    <div>
+                      <label className={labelCls}>Status</label>
+                      <select {...register('status')} className={inputCls}>
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Category */}
@@ -195,24 +286,28 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                   <label className={labelCls}>Category</label>
                   <select {...register('categoryId')} className={inputCls}>
                     <option value="">No category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Due date & time */}
+                {/* Due Date & Time (One-Time Task) or Target Time (Recurring Habit) */}
                 <div className="grid grid-cols-2 gap-3">
+                  {taskType === 'ONE_TIME' && (
+                    <div>
+                      <label className={labelCls}>Due Date</label>
+                      <input type="date" {...register('dueDate')} className={inputCls} />
+                    </div>
+                  )}
+
                   <div>
-                    <label className={labelCls}>Due date</label>
-                    <input {...register('dueDate')} type="date" className={inputCls} />
-                    {errors.dueDate && <p className={errorCls}>{errors.dueDate.message}</p>}
-                  </div>
-                  <div>
-                    <label className={labelCls}>Due time</label>
-                    <input {...register('dueTime')} type="time" className={inputCls} />
+                    <label className={labelCls}>
+                      {taskType === 'RECURRING' ? 'Target Time (Optional)' : 'Due Time (Optional)'}
+                    </label>
+                    <input type="time" {...register('dueTime')} className={inputCls} />
                   </div>
                 </div>
 
@@ -224,27 +319,27 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                       name="tagIds"
                       control={control}
                       render={({ field }) => (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           {tags.map((tag) => {
-                            const selected = field.value?.includes(tag.id);
+                            const isSelected = field.value?.includes(tag.id);
                             return (
                               <button
                                 key={tag.id}
                                 type="button"
                                 onClick={() => {
-                                  const current = field.value ?? [];
+                                  const current = field.value || [];
                                   field.onChange(
-                                    selected
+                                    isSelected
                                       ? current.filter((id) => id !== tag.id)
                                       : [...current, tag.id],
                                   );
                                 }}
-                                className="rounded-full px-2.5 py-1 text-xs font-medium transition-all"
-                                style={{
-                                  backgroundColor: selected ? `${tag.color}33` : `${tag.color}11`,
-                                  color: tag.color,
-                                  border: `1px solid ${selected ? tag.color : `${tag.color}44`}`,
-                                }}
+                                className={cn(
+                                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                                  isSelected
+                                    ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
+                                    : 'border border-[hsl(var(--border))] text-[hsl(var(--foreground-secondary))] hover:bg-[hsl(var(--background-secondary))]',
+                                )}
                               >
                                 {tag.name}
                               </button>
@@ -257,20 +352,21 @@ export function TaskForm({ open, onClose, editingTask }: TaskFormProps) {
                 )}
               </div>
 
-              <div className="mt-6 flex items-center gap-3 border-t border-[hsl(var(--border))] pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-lg bg-[hsl(var(--primary))] py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-opacity disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Saving...' : editingTask ? 'Save Changes' : 'Create Task'}
-                </button>
+              {/* Submit Buttons */}
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm text-[hsl(var(--foreground-secondary))] transition-colors hover:bg-[hsl(var(--background-secondary))]"
+                  className="rounded-xl border border-[hsl(var(--border))] px-4 py-2 text-xs font-medium text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--background-secondary))]"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-xs font-medium text-[hsl(var(--primary-foreground))] shadow-xs transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : editingTask ? 'Save Changes' : 'Create Task'}
                 </button>
               </div>
             </form>

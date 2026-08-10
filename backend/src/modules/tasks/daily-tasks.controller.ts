@@ -18,6 +18,7 @@ import { DailyTasksService } from './daily-tasks.service.js';
 import { CreateDailyTaskDto } from './dto/create-daily-task.dto.js';
 import { UpdateDailyTaskDto } from './dto/update-daily-task.dto.js';
 import { UpdateDailyInstanceDto } from './dto/update-daily-instance.dto.js';
+import { CreateDailyExceptionDto } from './dto/create-daily-exception.dto.js';
 
 @ApiTags('Daily Tasks')
 @Controller('tasks/daily')
@@ -27,9 +28,14 @@ export class DailyTasksController {
   constructor(private readonly dailyTasksService: DailyTasksService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all active daily task templates' })
-  findAll(@CurrentUser('userId') userId: string) {
-    return this.dailyTasksService.findAllTemplates(userId);
+  @ApiOperation({ summary: 'List daily task templates (active and inactive)' })
+  @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  findAll(
+    @CurrentUser('userId') userId: string,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    const isIncludeInactive = includeInactive === undefined ? true : includeInactive === 'true';
+    return this.dailyTasksService.findAllTemplates(userId, isIncludeInactive);
   }
 
   @Post()
@@ -93,5 +99,29 @@ export class DailyTasksController {
   @ApiOperation({ summary: 'Permanently delete a daily task and all its history' })
   async deletePermanent(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     await this.dailyTasksService.deleteTemplatePermanently(userId, id);
+  }
+
+  @Post(':id/exceptions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a skip exception for a daily task template on a specific date' })
+  createException(
+    @CurrentUser('userId') userId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateDailyExceptionDto,
+  ) {
+    return this.dailyTasksService.createException(userId, id, dto.date, dto.type ?? 'SKIP');
+  }
+
+  @Delete(':id/exceptions/:date')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete a skip exception (undo skip) for a daily task template on a date',
+  })
+  async deleteException(
+    @CurrentUser('userId') userId: string,
+    @Param('id') id: string,
+    @Param('date') date: string,
+  ) {
+    await this.dailyTasksService.deleteException(userId, id, date);
   }
 }

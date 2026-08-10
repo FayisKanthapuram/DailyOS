@@ -2,6 +2,7 @@
 
 export type Priority = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED';
+export type RecurrenceFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 // ─────────────────────────────────────────────
 // Category & Tag
@@ -36,6 +37,7 @@ export interface DailyTaskTemplate {
   title: string;
   description: string | null;
   priority: Priority;
+  frequency: RecurrenceFrequency;
   categoryId: string | null;
   time: string | null;
   isActive: boolean;
@@ -55,6 +57,7 @@ export interface DailyTaskInstance {
   isCompleted: boolean;
   completedAt: string | null;
   notes: string | null;
+  frequencySnapshot?: RecurrenceFrequency;
   createdAt: string;
   updatedAt: string;
   template: DailyTaskTemplate;
@@ -64,6 +67,7 @@ export interface CreateDailyTaskPayload {
   title: string;
   description?: string;
   priority?: Priority;
+  frequency?: RecurrenceFrequency;
   categoryId?: string;
   time?: string;
   tagIds?: string[];
@@ -74,6 +78,7 @@ export interface UpdateDailyTaskPayload {
   title?: string;
   description?: string;
   priority?: Priority;
+  frequency?: RecurrenceFrequency;
   categoryId?: string | null;
   time?: string | null;
   tagIds?: string[];
@@ -202,7 +207,74 @@ export interface TodaySummary {
   dailyTasks: {
     total: number;
     completed: number;
+    skipped?: number;
   };
   overdueTasksCount: number;
   streak: number;
+}
+
+export interface RecurringStatsItem {
+  total: number;
+  completed: number;
+  skipped: number;
+  pending: number;
+  completionRate: number;
+}
+
+export interface RecurringStatsResponse {
+  period: 'today' | 'week' | 'month' | '30days';
+  timezone: string;
+  daily: RecurringStatsItem;
+  weekly: RecurringStatsItem;
+  monthly: RecurringStatsItem;
+}
+
+// ─────────────────────────────────────────────
+// Unified Task Model & Exceptions
+// ─────────────────────────────────────────────
+
+export interface DailyTaskException {
+  id: string;
+  templateId: string;
+  userId: string;
+  date: string;
+  type: 'SKIP';
+  createdAt: string;
+}
+
+export interface UnifiedTask {
+  id: string;
+  source: 'NORMAL' | 'DAILY';
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  completed: boolean;
+  skipped: boolean;
+  priority: Priority;
+  frequency?: RecurrenceFrequency;
+  category?: Category | null;
+  tags: Array<{ tag: Tag }>;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  subtasks?: Subtask[];
+  templateId?: string | null;
+  instanceId?: string | null;
+  isFutureProjection?: boolean;
+  isOverdue?: boolean;
+  originalTask?: Task;
+  originalInstance?: DailyTaskInstance;
+  originalTemplate?: DailyTaskTemplate;
+}
+
+export interface UnifiedTasksResponse {
+  date: string;
+  today: string;
+  userTimezone: string;
+  tasks: UnifiedTask[];
+  stats: {
+    total: number;
+    completed: number;
+    skipped: number;
+    overdue: number;
+  };
 }

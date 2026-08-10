@@ -8,9 +8,17 @@ import type {
   CreateSubtaskPayload,
   UpdateSubtaskPayload,
   ReorderSubtasksPayload,
+  UnifiedTasksResponse,
 } from '../types/task.types';
 
 export const tasksApi = {
+  async getUnified(date?: string): Promise<UnifiedTasksResponse> {
+    const { data } = await api.get<UnifiedTasksResponse>(
+      `/tasks/unified${date ? `?date=${date}` : ''}`,
+    );
+    return data;
+  },
+
   async list(filters: TaskFilters = {}): Promise<Task[]> {
     const params = new URLSearchParams();
     if (filters.status) params.set('status', filters.status);

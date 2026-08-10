@@ -154,20 +154,20 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete, isUpdating }:
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
           <button
             onClick={() => onEdit(task.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))]"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))] md:h-7 md:w-7"
             aria-label="Edit task"
           >
-            <Pencil size={13} />
+            <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(task.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--destructive)/0.1)] hover:text-[hsl(var(--destructive))]"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--destructive)/0.1)] hover:text-[hsl(var(--destructive))] md:h-7 md:w-7"
             aria-label="Delete task"
           >
-            <Trash2 size={13} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>

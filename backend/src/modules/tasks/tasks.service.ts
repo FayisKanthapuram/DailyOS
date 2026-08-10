@@ -12,12 +12,39 @@ import { getTodayInTimezone } from '../../common/utils/timezone.js';
 import { Prisma, TaskStatus } from '@prisma/client';
 import { DateTime } from 'luxon';
 
+import { DailyTasksService } from './daily-tasks.service.js';
+
+export interface UnifiedTaskItem {
+  id: string;
+  source: 'NORMAL' | 'DAILY';
+  title: string;
+  description?: string | null;
+  status: string;
+  completed: boolean;
+  skipped: boolean;
+  priority: string;
+  frequency?: string;
+  category?: Record<string, unknown> | null;
+  tags: Record<string, unknown>[];
+  dueDate?: string | null;
+  dueTime?: string | null;
+  subtasks?: Record<string, unknown>[];
+  templateId?: string | null;
+  instanceId?: string | null;
+  isFutureProjection?: boolean;
+  isOverdue?: boolean;
+  originalTask?: Record<string, unknown>;
+  originalInstance?: Record<string, unknown>;
+  originalTemplate?: Record<string, unknown>;
+}
+
 @Injectable()
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly categoriesService: CategoriesService,
     private readonly tagsService: TagsService,
+    private readonly dailyTasksService: DailyTasksService,
   ) {}
 
   private async getUserTimezone(userId: string): Promise<string> {
@@ -217,5 +244,260 @@ export class TasksService {
         }),
       ),
     );
+  }
+
+  async getUnifiedTasksForDate(userId: string, dateOverride?: string) {
+    const userTimezone = await this.getUserTimezone(userId);
+    const today = getTodayInTimezone(userTimezone);
+    const date = dateOverride ?? today;
+
+    // 1. Fetch normal tasks due on `date`
+    const normalTasks = await this.prisma.task.findMany({
+      where: {
+        userId,
+        OR: [
+          { dueDate: date },
+          ...(date === today
+            ? [
+                {
+                  dueDate: { lt: today },
+                  status: { notIn: [TaskStatus.COMPLETED, TaskStatus.ARCHIVED] },
+                },
+              ]
+            : []),
+        ],
+      },
+      include: {
+        category: true,
+        tags: { include: { tag: true } },
+        subtasks: { orderBy: { order: 'asc' } },
+      },
+      orderBy: [{ priority: 'desc' }, { dueTime: 'asc' }],
+    });
+
+    // 2. Fetch daily instances & exceptions
+    let dailyInstances: Awaited<ReturnType<DailyTasksService['getTodayInstances']>> = [];
+    if (date <= today) {
+      dailyInstances = await this.dailyTasksService.getTodayInstances(userId, date);
+    }
+
+    const exceptions = await this.prisma.dailyTaskException.findMany({
+      where: { userId, date },
+    });
+    const exceptionMap = new Map(exceptions.map((e) => [e.templateId, e]));
+
+    // 3. Fetch future templates if date > today
+    let futureTemplates: Awaited<ReturnType<DailyTasksService['findAllTemplates']>> = [];
+    if (date > today) {
+      futureTemplates = await this.dailyTasksService.findAllTemplates(userId, false);
+    }
+
+    const currentTime = DateTime.now().setZone(userTimezone).toFormat('HH:mm');
+
+    // 4. Map to UnifiedTask structures
+    const unifiedTasks: UnifiedTaskItem[] = [];
+
+    // Map Normal Tasks
+    for (const t of normalTasks) {
+      const isOverdue =
+        t.status !== 'COMPLETED' &&
+        t.status !== 'ARCHIVED' &&
+        (t.dueDate! < today || (t.dueDate === today && !!t.dueTime && t.dueTime < currentTime));
+
+      unifiedTasks.push({
+        id: `task-${t.id}`,
+        source: 'NORMAL',
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        completed: t.status === 'COMPLETED',
+        skipped: false,
+        priority: t.priority,
+        category: t.category,
+        tags: t.tags,
+        dueDate: t.dueDate,
+        dueTime: t.dueTime,
+        subtasks: t.subtasks,
+        isOverdue,
+        originalTask: t,
+      });
+    }
+
+    const dateDt = DateTime.fromISO(date, { zone: userTimezone });
+    const weekStart = dateDt.startOf('week').toISODate()!;
+    const monthStart = dateDt.startOf('month').toISODate()!;
+    const monthEnd = dateDt.endOf('month').toISODate()!;
+
+    // Fetch instances and exceptions in week/month for template period checks
+    const [periodInstances, periodExceptions] = await Promise.all([
+      this.prisma.dailyTaskInstance.findMany({
+        where: { userId, date: { gte: monthStart, lte: monthEnd } },
+      }),
+      this.prisma.dailyTaskException.findMany({
+        where: { userId, date: { gte: monthStart, lte: monthEnd } },
+      }),
+    ]);
+
+    // Map Past/Today Daily Instances
+    for (const inst of dailyInstances) {
+      const freq = inst.template.frequency || 'DAILY';
+
+      if (freq === 'WEEKLY') {
+        const earlierCompletedInWeek = periodInstances.some(
+          (i) =>
+            i.templateId === inst.templateId &&
+            i.date >= weekStart &&
+            i.date < date &&
+            i.isCompleted,
+        );
+        const earlierSkippedInWeek = periodExceptions.some(
+          (e) =>
+            e.templateId === inst.templateId &&
+            e.date >= weekStart &&
+            e.date < date &&
+            e.type === 'SKIP',
+        );
+        if (earlierCompletedInWeek || earlierSkippedInWeek) continue;
+      } else if (freq === 'MONTHLY') {
+        const earlierCompletedInMonth = periodInstances.some(
+          (i) =>
+            i.templateId === inst.templateId &&
+            i.date >= monthStart &&
+            i.date < date &&
+            i.isCompleted,
+        );
+        const earlierSkippedInMonth = periodExceptions.some(
+          (e) =>
+            e.templateId === inst.templateId &&
+            e.date >= monthStart &&
+            e.date < date &&
+            e.type === 'SKIP',
+        );
+        if (earlierCompletedInMonth || earlierSkippedInMonth) continue;
+      }
+
+      const exception = exceptionMap.get(inst.templateId);
+      const isSkipped = exception?.type === 'SKIP';
+
+      unifiedTasks.push({
+        id: `inst-${inst.id}`,
+        source: 'DAILY',
+        title: inst.snapshotTitle,
+        description: inst.template.description,
+        status: inst.isCompleted ? 'COMPLETED' : 'TODO',
+        completed: inst.isCompleted,
+        skipped: isSkipped,
+        priority: inst.template.priority,
+        frequency: freq,
+        category: inst.template.category,
+        tags: inst.template.tags,
+        dueDate: inst.date,
+        dueTime: inst.template.time ?? null,
+        templateId: inst.templateId,
+        instanceId: inst.id,
+        isFutureProjection: false,
+        originalInstance: inst,
+      });
+    }
+
+    // Map Future Templates (date > today)
+    for (const template of futureTemplates) {
+      const freq = template.frequency || 'DAILY';
+      const templateCreatedDate =
+        DateTime.fromISO(template.createdAt.toISOString(), { zone: userTimezone }).toISODate() ||
+        '';
+      const exception = exceptionMap.get(template.id);
+
+      if (freq === 'WEEKLY') {
+        const earlierCompletedInWeek = periodInstances.some(
+          (i) =>
+            i.templateId === template.id && i.date >= weekStart && i.date < date && i.isCompleted,
+        );
+        const earlierSkippedInWeek = periodExceptions.some(
+          (e) =>
+            e.templateId === template.id &&
+            e.date >= weekStart &&
+            e.date < date &&
+            e.type === 'SKIP',
+        );
+        if (earlierCompletedInWeek || earlierSkippedInWeek) continue;
+      } else if (freq === 'MONTHLY') {
+        const earlierCompletedInMonth = periodInstances.some(
+          (i) =>
+            i.templateId === template.id && i.date >= monthStart && i.date < date && i.isCompleted,
+        );
+        const earlierSkippedInMonth = periodExceptions.some(
+          (e) =>
+            e.templateId === template.id &&
+            e.date >= monthStart &&
+            e.date < date &&
+            e.type === 'SKIP',
+        );
+        if (earlierCompletedInMonth || earlierSkippedInMonth) continue;
+      }
+
+      if (date >= templateCreatedDate && exception?.type !== 'SKIP') {
+        unifiedTasks.push({
+          id: `proj-${template.id}-${date}`,
+          source: 'DAILY',
+          title: template.title,
+          description: template.description,
+          status: 'TODO',
+          completed: false,
+          skipped: false,
+          priority: template.priority,
+          frequency: freq,
+          category: template.category,
+          tags: template.tags,
+          dueDate: date,
+          dueTime: template.time ?? null,
+          templateId: template.id,
+          isFutureProjection: true,
+          originalTemplate: template,
+        });
+      }
+    }
+
+    // Sort: Overdue items first, then by priority (URGENT > HIGH > MEDIUM > LOW > NONE), then by dueTime
+    const priorityWeight: Record<string, number> = {
+      URGENT: 5,
+      HIGH: 4,
+      MEDIUM: 3,
+      LOW: 2,
+      NONE: 1,
+    };
+
+    unifiedTasks.sort((a, b) => {
+      if (a.isOverdue && !b.isOverdue) return -1;
+      if (!a.isOverdue && b.isOverdue) return 1;
+
+      const pA = priorityWeight[a.priority] || 0;
+      const pB = priorityWeight[b.priority] || 0;
+      if (pA !== pB) return pB - pA;
+
+      if (a.dueTime && !b.dueTime) return -1;
+      if (!a.dueTime && b.dueTime) return 1;
+      if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
+      return 0;
+    });
+
+    // Summary statistics
+    const activeTasks = unifiedTasks.filter((t) => !t.skipped && !t.isFutureProjection);
+    const completedCount = activeTasks.filter((t) => t.completed).length;
+    const skippedCount = unifiedTasks.filter((t) => t.skipped).length;
+    const overdueCount = unifiedTasks.filter((t) => t.isOverdue).length;
+
+    return {
+      date,
+      today,
+      userTimezone,
+      tasks: unifiedTasks,
+      stats: {
+        total: activeTasks.length,
+        completed: completedCount,
+        skipped: skippedCount,
+        overdue: overdueCount,
+      },
+    };
   }
 }

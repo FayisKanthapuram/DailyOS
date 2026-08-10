@@ -125,21 +125,21 @@ export function DailyTaskCard({
           </AnimatePresence>
         </div>
 
-        {/* Actions — visible on hover */}
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
           <button
             onClick={() => onEdit(template.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))]"
-            aria-label="Edit"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))] md:h-7 md:w-7"
+            aria-label="Edit daily task template"
           >
-            <Pencil size={13} />
+            <Pencil size={14} />
           </button>
           <button
             onClick={() => onDelete(template.id)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--destructive)/0.1)] hover:text-[hsl(var(--destructive))]"
-            aria-label="Delete"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--destructive)/0.1)] hover:text-[hsl(var(--destructive))] md:h-7 md:w-7"
+            aria-label="Delete daily task template"
           >
-            <Trash2 size={13} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>

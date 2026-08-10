@@ -22,6 +22,13 @@ export function useTasks(filters: TaskFilters = {}) {
   });
 }
 
+export function useUnifiedTasks(date?: string) {
+  return useQuery({
+    queryKey: ['tasks', 'unified', date],
+    queryFn: () => tasksApi.getUnified(date),
+  });
+}
+
 export function useTask(id: string) {
   return useQuery({
     queryKey: TASK_KEYS.detail(id),

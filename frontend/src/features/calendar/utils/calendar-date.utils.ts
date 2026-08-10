@@ -116,6 +116,13 @@ export function projectEventsForGrid(data: CalendarDataResponse): Map<string, Ca
   const todayStr = data.today;
   const currentTimeStr = DateTime.now().setZone(data.userTimezone).toFormat('HH:mm');
 
+  // Exception set for quick lookup
+  const skippedSet = new Set(
+    (data.dailyExceptions ?? [])
+      .filter((e) => e.type === 'SKIP')
+      .map((e) => `${e.templateId}_${e.date}`),
+  );
+
   // 1. Normal tasks
   for (const task of data.normalTasks) {
     if (!task.dueDate) continue;
@@ -143,6 +150,8 @@ export function projectEventsForGrid(data: CalendarDataResponse): Map<string, Ca
 
   // 2. Daily task instances (for date <= today)
   for (const inst of data.dailyInstances) {
+    if (skippedSet.has(`${inst.templateId}_${inst.date}`)) continue;
+
     addEvent(inst.date, {
       id: `inst-${inst.id}`,
       type: 'daily_instance',
@@ -158,10 +167,10 @@ export function projectEventsForGrid(data: CalendarDataResponse): Map<string, Ca
   }
 
   // 3. Daily task templates projected on future dates (date > today)
-  // Only project if template is active and targetDate >= max(createdAtDate, today + 1)
   for (const template of data.dailyTemplates) {
     if (!template.isActive) continue;
 
+    const freq = template.frequency || 'DAILY';
     const templateCreatedDate =
       DateTime.fromISO(template.createdAt, { zone: data.userTimezone }).toISODate() || '';
     const startDateDt = DateTime.fromISO(data.startDate, { zone: data.userTimezone });
@@ -171,21 +180,65 @@ export function projectEventsForGrid(data: CalendarDataResponse): Map<string, Ca
     while (cursor <= endDateDt) {
       const dateStr = cursor.toISODate() || '';
 
-      // Future date condition: dateStr > today AND dateStr >= templateCreatedDate
-      if (dateStr > todayStr && dateStr >= templateCreatedDate) {
-        addEvent(dateStr, {
-          id: `proj-${template.id}-${dateStr}`,
-          type: 'daily_projection',
-          title: template.title,
-          date: dateStr,
-          time: template.time ?? null,
-          isCompleted: false,
-          priority: template.priority,
-          category: template.category,
-          tags: template.tags,
-          isReadOnlyFuture: true,
-          originalTemplate: template,
-        });
+      if (
+        dateStr > todayStr &&
+        dateStr >= templateCreatedDate &&
+        !skippedSet.has(`${template.id}_${dateStr}`)
+      ) {
+        let skipProjection = false;
+        const cursorDt = DateTime.fromISO(dateStr, { zone: data.userTimezone });
+
+        if (freq === 'WEEKLY') {
+          const weekStart = cursorDt.startOf('week').toISODate() || '';
+          const completedInWeek = data.dailyInstances.some(
+            (i) =>
+              i.templateId === template.id &&
+              i.date >= weekStart &&
+              i.date < dateStr &&
+              i.isCompleted,
+          );
+          const skippedInWeek = (data.dailyExceptions ?? []).some(
+            (e) =>
+              e.templateId === template.id &&
+              e.date >= weekStart &&
+              e.date < dateStr &&
+              e.type === 'SKIP',
+          );
+          if (completedInWeek || skippedInWeek) skipProjection = true;
+        } else if (freq === 'MONTHLY') {
+          const monthStart = cursorDt.startOf('month').toISODate() || '';
+          const completedInMonth = data.dailyInstances.some(
+            (i) =>
+              i.templateId === template.id &&
+              i.date >= monthStart &&
+              i.date < dateStr &&
+              i.isCompleted,
+          );
+          const skippedInMonth = (data.dailyExceptions ?? []).some(
+            (e) =>
+              e.templateId === template.id &&
+              e.date >= monthStart &&
+              e.date < dateStr &&
+              e.type === 'SKIP',
+          );
+          if (completedInMonth || skippedInMonth) skipProjection = true;
+        }
+
+        if (!skipProjection) {
+          addEvent(dateStr, {
+            id: `proj-${template.id}-${dateStr}`,
+            type: 'daily_projection',
+            title: template.title,
+            date: dateStr,
+            time: template.time ?? null,
+            isCompleted: false,
+            priority: template.priority,
+            category: template.category,
+            tags: template.tags,
+            isReadOnlyFuture: true,
+            originalTemplate: template,
+          });
+        }
       }
       cursor = cursor.plus({ days: 1 });
     }

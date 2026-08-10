@@ -109,20 +109,25 @@ export function DailyTaskForm({ open, onClose, editingTemplate }: DailyTaskFormP
 
           {/* Panel */}
           <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
             transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] w-full flex-col rounded-t-2xl border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-2xl pb-[max(1rem,env(safe-area-inset-bottom))] md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:max-w-md md:rounded-none md:border-l md:border-t-0 md:pb-0"
           >
+            {/* Mobile drag handle indicator */}
+            <div className="mx-auto my-2 h-1 w-12 rounded-full bg-[hsl(var(--border))] md:hidden" />
+
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-3 md:py-4">
               <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">
                 {editingTemplate ? 'Edit Daily Task' : 'New Daily Task'}
               </h2>
               <button
                 onClick={onClose}
+                type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--background-secondary))]"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>

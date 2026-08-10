@@ -29,6 +29,14 @@ import { TaskFiltersDto } from './dto/task-filters.dto.js';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
+  @Get('unified')
+  @ApiOperation({
+    summary: 'Get unified task list (one-time tasks + daily occurrences) for a specific date',
+  })
+  getUnifiedTasks(@CurrentUser('userId') userId: string, @Query('date') date?: string) {
+    return this.tasksService.getUnifiedTasksForDate(userId, date);
+  }
+
   @Get()
   @ApiOperation({ summary: 'List normal tasks (with filters)' })
   findAll(@CurrentUser('userId') userId: string, @Query() filters: TaskFiltersDto) {

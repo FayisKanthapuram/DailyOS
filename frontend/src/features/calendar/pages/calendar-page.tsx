@@ -7,6 +7,7 @@ import { CalendarHeader } from '../components/calendar-header';
 import { MonthView } from '../components/month-view';
 import { WeekView } from '../components/week-view';
 import { DayView } from '../components/day-view';
+import { MobileCalendarStrip } from '../components/mobile-calendar-strip';
 import { UnscheduledDrawer } from '../components/unscheduled-drawer';
 import { TaskForm } from '@/features/tasks/components/task-form';
 import { DailyTaskForm } from '@/features/tasks/components/daily-task-form';
@@ -174,62 +175,84 @@ export function CalendarPage() {
         {isLoading ? (
           <div className="h-96 animate-pulse rounded-xl bg-[hsl(var(--background-secondary))]" />
         ) : (
-          <AnimatePresence mode="wait">
-            {viewMode === 'month' && (
-              <motion.div
-                key="month"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
-                <MonthView
-                  gridDays={monthRange.gridDays}
-                  eventsByDate={eventsByDate}
-                  onToggleStatus={handleToggleStatus}
-                  onEventClick={handleEventClick}
-                  onDateClick={handleDateClick}
-                />
-              </motion.div>
-            )}
+          <>
+            {/* Mobile Calendar Strip + Agenda View (< 768px) */}
+            <div className="block md:hidden">
+              <MobileCalendarStrip
+                selectedDate={selectedDate}
+                userTimezone={userTimezone}
+                onSelectDate={setSelectedDate}
+                eventsByDate={eventsByDate}
+                onToggleStatus={handleToggleStatus}
+                onEventClick={handleEventClick}
+                onAddClick={(date) => {
+                  setSelectedDate(date);
+                  setEditingTask(undefined);
+                  setTaskFormOpen(true);
+                }}
+              />
+            </div>
 
-            {viewMode === 'week' && (
-              <motion.div
-                key="week"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
-                <WeekView
-                  days={weekRange.days}
-                  eventsByDate={eventsByDate}
-                  onToggleStatus={handleToggleStatus}
-                  onEventClick={handleEventClick}
-                  onDateClick={handleDateClick}
-                />
-              </motion.div>
-            )}
+            {/* Desktop Views (>= 768px) */}
+            <div className="hidden md:block">
+              <AnimatePresence mode="wait">
+                {viewMode === 'month' && (
+                  <motion.div
+                    key="month"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <MonthView
+                      gridDays={monthRange.gridDays}
+                      eventsByDate={eventsByDate}
+                      onToggleStatus={handleToggleStatus}
+                      onEventClick={handleEventClick}
+                      onDateClick={handleDateClick}
+                    />
+                  </motion.div>
+                )}
 
-            {viewMode === 'day' && (
-              <motion.div
-                key="day"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
-                <DayView
-                  date={selectedDate}
-                  isToday={selectedDate === getTodayInUserTimezone(userTimezone)}
-                  events={eventsByDate.get(selectedDate) ?? []}
-                  onToggleStatus={handleToggleStatus}
-                  onEventClick={handleEventClick}
-                  onAddClick={handleDateClick}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {viewMode === 'week' && (
+                  <motion.div
+                    key="week"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <WeekView
+                      days={weekRange.days}
+                      eventsByDate={eventsByDate}
+                      onToggleStatus={handleToggleStatus}
+                      onEventClick={handleEventClick}
+                      onDateClick={handleDateClick}
+                    />
+                  </motion.div>
+                )}
+
+                {viewMode === 'day' && (
+                  <motion.div
+                    key="day"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <DayView
+                      date={selectedDate}
+                      isToday={selectedDate === getTodayInUserTimezone(userTimezone)}
+                      events={eventsByDate.get(selectedDate) ?? []}
+                      onToggleStatus={handleToggleStatus}
+                      onEventClick={handleEventClick}
+                      onAddClick={handleDateClick}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
         )}
       </div>
 

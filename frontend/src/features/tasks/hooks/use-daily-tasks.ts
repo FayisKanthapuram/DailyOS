@@ -40,8 +40,10 @@ export function useCreateDailyTask() {
   return useMutation({
     mutationFn: (payload: CreateDailyTaskPayload) => dailyTasksApi.createTemplate(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DAILY_TASK_KEYS.templates });
-      qc.invalidateQueries({ queryKey: ['daily-tasks', 'today'] });
+      qc.invalidateQueries({ queryKey: ['daily-tasks'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -52,8 +54,10 @@ export function useUpdateDailyTask() {
     mutationFn: ({ id, payload }: { id: string; payload: UpdateDailyTaskPayload }) =>
       dailyTasksApi.updateTemplate(id, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DAILY_TASK_KEYS.templates });
-      qc.invalidateQueries({ queryKey: ['daily-tasks', 'today'] });
+      qc.invalidateQueries({ queryKey: ['daily-tasks'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -63,8 +67,10 @@ export function useDeactivateDailyTask() {
   return useMutation({
     mutationFn: (id: string) => dailyTasksApi.deactivateTemplate(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DAILY_TASK_KEYS.templates });
-      qc.invalidateQueries({ queryKey: ['daily-tasks', 'today'] });
+      qc.invalidateQueries({ queryKey: ['daily-tasks'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -74,8 +80,10 @@ export function useDeleteDailyTaskPermanently() {
   return useMutation({
     mutationFn: (id: string) => dailyTasksApi.deleteTemplatePermanently(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: DAILY_TASK_KEYS.templates });
-      qc.invalidateQueries({ queryKey: ['daily-tasks', 'today'] });
+      qc.invalidateQueries({ queryKey: ['daily-tasks'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });
 }
@@ -91,7 +99,35 @@ export function useUpdateDailyInstance() {
       payload: UpdateDailyInstancePayload;
     }) => dailyTasksApi.updateInstance(instanceId, payload),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
       qc.invalidateQueries({ queryKey: ['daily-tasks', 'today'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useCreateDailyException() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, date, type }: { templateId: string; date: string; type?: 'SKIP' }) =>
+      dailyTasksApi.createException(templateId, date, type),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useDeleteDailyException() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, date }: { templateId: string; date: string }) =>
+      dailyTasksApi.deleteException(templateId, date),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
     },
   });

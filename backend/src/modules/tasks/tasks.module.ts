@@ -8,7 +8,7 @@ import { TagsModule } from '../tags/tags.module.js';
 
 @Module({
   imports: [CategoriesModule, TagsModule],
-  controllers: [TasksController, DailyTasksController],
+  controllers: [DailyTasksController, TasksController],
   providers: [TasksService, DailyTasksService],
   exports: [DailyTasksService],
 })

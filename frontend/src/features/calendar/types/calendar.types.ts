@@ -10,6 +10,7 @@ export interface CalendarDataResponse {
   normalTasks: Task[];
   dailyInstances: DailyTaskInstance[];
   dailyTemplates: DailyTaskTemplate[];
+  dailyExceptions?: Array<{ id: string; templateId: string; date: string; type: 'SKIP' }>;
   unscheduledTasks: Task[];
 }
 

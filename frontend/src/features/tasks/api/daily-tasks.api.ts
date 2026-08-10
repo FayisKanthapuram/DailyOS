@@ -5,6 +5,7 @@ import type {
   CreateDailyTaskPayload,
   UpdateDailyTaskPayload,
   UpdateDailyInstancePayload,
+  DailyTaskException,
 } from '../types/task.types';
 
 export const dailyTasksApi = {
@@ -53,5 +54,21 @@ export const dailyTasksApi = {
       `/tasks/daily/${templateId}/history?limit=${limit}`,
     );
     return data;
+  },
+
+  async createException(
+    templateId: string,
+    date: string,
+    type: 'SKIP' = 'SKIP',
+  ): Promise<DailyTaskException> {
+    const { data } = await api.post<DailyTaskException>(`/tasks/daily/${templateId}/exceptions`, {
+      date,
+      type,
+    });
+    return data;
+  },
+
+  async deleteException(templateId: string, date: string): Promise<void> {
+    await api.delete(`/tasks/daily/${templateId}/exceptions/${date}`);
   },
 };
