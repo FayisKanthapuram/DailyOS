@@ -1,0 +1,228 @@
+@import 'tailwindcss';
+
+/*
+ * DailyOS Design System — CSS Custom Properties
+ *
+ * Uses Tailwind v4's CSS-first configuration.
+ * Theme switching is done by toggling .dark class on <html>.
+ * All colors use HSL for easy opacity manipulation.
+ */
+
+@theme {
+  /* Primary Blue — modern, slightly desaturated */
+  --color-primary-50: oklch(0.97 0.02 250);
+  --color-primary-100: oklch(0.93 0.04 250);
+  --color-primary-200: oklch(0.87 0.08 250);
+  --color-primary-300: oklch(0.78 0.12 250);
+  --color-primary-400: oklch(0.68 0.16 250);
+  --color-primary-500: oklch(0.58 0.19 250);
+  --color-primary-600: oklch(0.5 0.19 250);
+  --color-primary-700: oklch(0.43 0.17 250);
+  --color-primary-800: oklch(0.37 0.14 250);
+  --color-primary-900: oklch(0.32 0.11 250);
+  --color-primary-950: oklch(0.24 0.08 250);
+
+  /* Border radius */
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.375rem;
+
+  /* Sidebar width */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 0px;
+
+  /* Animations */
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-in: slide-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Light Theme (default)
+ */
+:root {
+  /* Background layers */
+  --background: 0 0% 100%;
+  --background-secondary: 220 14% 96%;
+  --background-tertiary: 220 13% 91%;
+
+  /* Foreground / Text */
+  --foreground: 224 71% 4%;
+  --foreground-secondary: 220 9% 46%;
+  --foreground-muted: 220 9% 64%;
+
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71% 4%;
+
+  /* Primary */
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+
+  /* Secondary */
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 220 9% 46%;
+
+  /* Muted */
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+
+  /* Accent */
+  --accent: 220 14% 96%;
+  --accent-foreground: 224 71% 4%;
+
+  /* Destructive / Error */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* Success */
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 98%;
+
+  /* Warning */
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 98%;
+
+  /* Info */
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 98%;
+
+  /* Border / Input / Ring */
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 221 83% 53%;
+
+  /* Sidebar */
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 224 71% 4%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-accent: 220 14% 96%;
+  --sidebar-accent-foreground: 224 71% 4%;
+}
+
+/*
+ * Dark Theme
+ */
+.dark {
+  --background: 224 71% 4%;
+  --background-secondary: 222 47% 8%;
+  --background-tertiary: 220 40% 13%;
+
+  --foreground: 210 40% 98%;
+  --foreground-secondary: 218 11% 65%;
+  --foreground-muted: 215 14% 44%;
+
+  --card: 222 47% 8%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 8%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 217 91% 60%;
+  --primary-foreground: 224 71% 4%;
+
+  --secondary: 220 40% 13%;
+  --secondary-foreground: 218 11% 65%;
+
+  --muted: 220 40% 13%;
+  --muted-foreground: 215 14% 44%;
+
+  --accent: 220 40% 13%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62% 55%;
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 142 69% 42%;
+  --success-foreground: 0 0% 98%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 4%;
+
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 4%;
+
+  --border: 220 30% 18%;
+  --input: 220 30% 18%;
+  --ring: 217 91% 60%;
+
+  --sidebar-background: 222 47% 6%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-border: 220 30% 18%;
+  --sidebar-accent: 220 40% 13%;
+  --sidebar-accent-foreground: 210 40% 98%;
+}
+
+/*
+ * Base styles
+ */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground-muted) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground-muted) / 0.5);
+}
+
+/* Focus visible outline */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
