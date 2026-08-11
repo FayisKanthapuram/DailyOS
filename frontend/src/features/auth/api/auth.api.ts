@@ -56,4 +56,14 @@ export const authApi = {
 
     return pendingRefreshPromise;
   },
+
+  /**
+   * Returns the full backend Google OAuth URL.
+   * Respects VITE_API_URL in production (e.g. https://backend.onrender.com/api/auth/google)
+   * and falls back to relative /api/auth/google in local dev.
+   */
+  getGoogleAuthUrl(): string {
+    const baseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+    return `${baseUrl}/auth/google`;
+  },
 };

@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, User, Loader2, AlertCircle } from 'lucide-reac
 import { useState } from 'react';
 import { registerSchema, type RegisterFormValues } from '@/features/auth/schemas/auth.schemas';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { authApi } from '@/features/auth/api/auth.api';
 
 export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +45,7 @@ export function RegisterPage() {
   };
 
   const handleGoogleRegister = () => {
-    window.location.href = '/api/auth/google';
+    window.location.href = authApi.getGoogleAuthUrl();
   };
 
   return (

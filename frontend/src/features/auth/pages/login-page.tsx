@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { loginSchema, type LoginFormValues } from '@/features/auth/schemas/auth.schemas';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { authApi } from '@/features/auth/api/auth.api';
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +40,7 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+    window.location.href = authApi.getGoogleAuthUrl();
   };
 
   return (
