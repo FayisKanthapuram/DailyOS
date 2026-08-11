@@ -44,7 +44,7 @@ export class AuthController {
   ): Promise<AuthResponseDto> {
     const { tokens, user } = await this.authService.register(dto);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
-    return { accessToken: tokens.accessToken, user };
+    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user };
   }
 
   @Post('login')
@@ -58,21 +58,28 @@ export class AuthController {
   ): Promise<AuthResponseDto> {
     const { tokens, user } = await this.authService.login(dto);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
-    return { accessToken: tokens.accessToken, user };
+    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user };
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh Access Token using HttpOnly Refresh Token Cookie' })
+  @ApiOperation({
+    summary: 'Refresh Access Token using Cookie, Request Body, or x-refresh-token Header',
+  })
   @ApiResponse({ status: 200, description: 'Tokens successfully rotated', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body('refreshToken') bodyRefreshToken?: string,
   ): Promise<AuthResponseDto> {
-    const refreshToken = (req.cookies as Record<string, string> | undefined)?.refreshToken;
+    const refreshToken =
+      (req.cookies as Record<string, string> | undefined)?.refreshToken ||
+      bodyRefreshToken ||
+      (req.headers['x-refresh-token'] as string | undefined);
+
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token cookie missing');
+      throw new UnauthorizedException('Refresh token missing');
     }
 
     try {
@@ -82,7 +89,7 @@ export class AuthController {
       );
       const { tokens, user } = await this.authService.refresh(payload.sub, refreshToken);
       this.setRefreshTokenCookie(res, tokens.refreshToken);
-      return { accessToken: tokens.accessToken, user };
+      return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user };
     } catch {
       res.clearCookie('refreshToken', { path: '/api/auth' });
       throw new UnauthorizedException('Invalid or expired refresh token');

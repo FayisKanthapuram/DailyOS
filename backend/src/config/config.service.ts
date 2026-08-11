@@ -71,8 +71,21 @@ export class AppConfigService {
       origins.push(...parts);
     }
 
-    if (this.isDevelopment && !origins.includes('http://localhost:5173')) {
-      origins.push('http://localhost:5173');
+    if (this.isDevelopment) {
+      // Development localhost origins:
+      // - http://localhost:5173  → Vite web dev server (frontend)
+      // - http://localhost:8081  → Expo Metro / Expo Web dev server (mobile web preview)
+      // - http://localhost:19006 → Expo Web (legacy port)
+      const devOrigins = [
+        'http://localhost:5173',
+        'http://localhost:8081',
+        'http://localhost:19006',
+      ];
+      for (const devOrigin of devOrigins) {
+        if (!origins.includes(devOrigin)) {
+          origins.push(devOrigin);
+        }
+      }
     }
 
     return Array.from(new Set(origins));
